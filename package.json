@@ -1,0 +1,11 @@
+{
+  "name": "monfrut-maestro-proveedores",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Maestro de Proveedores MONFRUT - versión web del informe Power BI, con datos en Neon",
+  "dependencies": {
+    "pg": "^8.13.0"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -183,6 +183,14 @@ table.pv td.cero{color:#C3C9BF}
 .permisos{display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--borde);border-radius:8px;padding:6px}
 .op input{accent-color:var(--verde)}
 label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5px;cursor:pointer;text-transform:none;font-size:13px;font-weight:400;color:var(--txt);letter-spacing:0}
+.pdfc{display:inline-flex;gap:4px;align-items:center}
+.pdfb{border:1px solid var(--borde);background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer;font-size:11.5px;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+.pdfb svg{width:12px;height:12px}
+.pdfb.ver{color:var(--rojo);border-color:#F5C2CB;background:var(--rojo-claro)}
+.pdfb.sub{color:var(--verde-osc);border-color:#CFE3C1;background:var(--verde-suave)}
+.pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1F2A1A;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:.2s;z-index:100;pointer-events:none;max-width:90vw}
+#toast.on{opacity:1;transform:translateX(-50%)} #toast.err{background:var(--rojo)}
 .cargando{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:80px 20px;color:var(--txt2)}
 .spin{width:28px;height:28px;border:3px solid var(--verde-claro);border-top-color:var(--verde);border-radius:50%;animation:g 1s linear infinite}
 @keyframes g{to{transform:rotate(360deg)}}
@@ -485,7 +493,7 @@ function tabla(el, cfg) {
     const vis = f.slice(st.pag * TAM, st.pag * TAM + TAM);
     const tot = cfg.cols.map(c => c.sum ? f.reduce((s,r) => s + (c.v(r) || 0), 0) : null);
     body.innerHTML = `<table class="t"><thead><tr>${cfg.cols.map((c,i) => `<th data-i="${i}" class="${esNum(c) ? 'n' : ''}">${esc(c.t)}${st.orden === i ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
-      <tbody>${vis.map((r, ri) => `<tr${cfg.alClic ? ` data-ri="${ri}" class="clic"` : ''}>${cfg.cols.map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}" title="${c.f === 'pdf' || c.html ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
+      <tbody>${vis.map((r, ri) => `<tr${cfg.alClic ? ` data-ri="${ri}" class="clic"` : ''}>${cfg.cols.map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}"${c.max ? ` style="max-width:${c.max}px"` : ''} title="${c.f === 'pdf' || (c.html && !c.max) ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
       ${tot.some(x => x != null) ? `<tfoot><tr>${cfg.cols.map((c,i) => `<td class="${esNum(c) ? 'n' : ''}">${i === 0 ? 'Total' : tot[i] != null ? FMT[c.f](tot[i]) : ''}</td>`).join('')}</tr></tfoot>` : ''}</table>`;
     if (cfg.alClic) body.querySelectorAll('tr[data-ri]').forEach(tr => tr.onclick = e => { if (e.target.closest('a')) return; cfg.alClic(vis[+tr.dataset.ri]); });
     body.querySelectorAll('th').forEach(th => th.onclick = () => { const i = +th.dataset.i; if (st.orden === i) st.dir *= -1; else { st.orden = i; st.dir = esNum(cfg.cols[i]) ? -1 : 1; } pintar(); });
@@ -616,15 +624,74 @@ function semaforo(n) {
   return `<span class="sem" title="${t}"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10.5" fill="${c}"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ic}</g></svg><b>${n}</b></span>`;
 }
 const COLS_CRUCE = () => [
-  { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social }, { t: 'DOC', v: r => r.doc },
+  { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social, max: 190 }, { t: 'DOC', v: r => r.doc },
   { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
   { t: 'Exento', v: r => r.monto_exento, f: 'clp', sum: true },
   { t: 'Neto', v: r => r.monto_neto, f: 'clp', sum: true, html: r => r.monto_neto > 1500000 ? `<b style="color:var(--rojo)">${clp(r.monto_neto)}</b>` : clp(r.monto_neto) },
   { t: 'IVA', v: r => r.monto_iva, f: 'clp', sum: true },
   { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
   { t: 'Días atraso', v: r => r.dias_atraso, f: 'num', html: r => celdaAtraso(r.dias_atraso) },
-  { t: 'PDF', v: r => r.pdf, f: 'pdf' },
+  { t: 'PDF', v: r => r.pdf_nombre || r.pdf, html: r => celdaPdf(r) },
 ];
+// Celda PDF del cruce: ver / eliminar el PDF subido, o subir uno nuevo
+function celdaPdf(r) {
+  const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}"`;
+  if (r.pdf_nombre) {
+    const puede = S.estado && (S.estado.admin || S.estado.usuario === r.pdf_por);
+    const info = `${r.pdf_nombre} · subido por ${r.pdf_por || '?'}${r.pdf_fecha ? ' el ' + new Date(r.pdf_fecha).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : ''}`;
+    return `<span class="pdfc"><button class="pdfb ver" data-acc="ver" ${k} title="${esc(info)}">${ICO_PDF}Ver</button>${puede ? `<button class="pdfb del" data-acc="del" ${k} title="Eliminar PDF">✕</button>` : ''}</span>`;
+  }
+  const ext = primerLink(r.pdf);
+  return `<span class="pdfc">${ext ? `<a class="pdf" href="${esc(ext)}" target="_blank" rel="noopener">${ICO_PDF}PDF</a>` : ''}<button class="pdfb sub" data-acc="sub" ${k} title="Subir el PDF de esta factura">⤒ Subir</button></span>`;
+}
+// Acciones de PDF (delegadas: funcionan aunque la tabla se vuelva a dibujar)
+document.addEventListener('click', async e => {
+  const b = e.target.closest('.pdfb'); if (!b) return;
+  e.preventDefault(); e.stopPropagation();
+  const q = `rut=${encodeURIComponent(b.dataset.rut)}&folio=${b.dataset.folio}&tipo=${b.dataset.tipo}`;
+  const fila = (S.datos.cruce || []).find(r => r.rut === b.dataset.rut && String(r.folio) === b.dataset.folio && String(r.tipo_doc ?? 0) === b.dataset.tipo);
+  const hdr = { 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': encodeURIComponent(S.clave) };
+  const repintar = () => { const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) pintarCuerpo(p, fuente(p)); };
+  if (b.dataset.acc === 'ver') {
+    const w = window.open('', '_blank');
+    try {
+      const r = await fetch('/api/pdf?' + q, { headers: hdr });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'No se pudo abrir el PDF');
+      const url = URL.createObjectURL(await r.blob());
+      if (w) w.location = url; else location.href = url;
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) { if (w) w.close(); aviso(err.message, true); }
+  }
+  if (b.dataset.acc === 'del') {
+    if (b.dataset.conf !== '1') { b.dataset.conf = '1'; b.textContent = '¿Eliminar?'; b.classList.add('conf'); setTimeout(() => { b.dataset.conf = ''; b.textContent = '✕'; b.classList.remove('conf'); }, 4000); return; }
+    try {
+      const r = await fetch('/api/pdf?' + q, { method: 'DELETE', headers: hdr });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      if (fila) Object.assign(fila, { pdf_nombre: null, pdf_por: null, pdf_fecha: null });
+      repintar(); aviso('PDF eliminado.');
+    } catch (err) { aviso(err.message, true); }
+  }
+  if (b.dataset.acc === 'sub') {
+    const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'application/pdf,.pdf';
+    inp.onchange = async () => {
+      const f = inp.files[0]; if (!f) return;
+      if (f.size > 4 * 1024 * 1024) return aviso('El PDF supera 4 MB. Escanéalo con menor resolución.', true);
+      b.disabled = true; b.textContent = 'Subiendo…';
+      try {
+        const r = await fetch('/api/pdf?' + q, { method: 'POST', body: f, headers: { ...hdr, 'Content-Type': 'application/octet-stream', 'x-nombre': encodeURIComponent(f.name) } });
+        const j = await r.json(); if (!r.ok) throw new Error(j.error);
+        if (fila) Object.assign(fila, { pdf_nombre: j.nombre, pdf_por: j.por, pdf_fecha: new Date().toISOString() });
+        repintar(); aviso('PDF subido: ' + j.nombre);
+      } catch (err) { b.disabled = false; b.textContent = '⤒ Subir'; aviso(err.message, true); }
+    };
+    inp.click();
+  }
+}, true);
+function aviso(txt, error) {
+  let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+  t.textContent = txt; t.className = error ? 'err on' : 'on';
+  clearTimeout(t._h); t._h = setTimeout(() => t.className = '', 3500);
+}
 const PAGINAS = [
   { id: 'inicio', titulo: 'Inicio', ic: 'home', desc: '' },
 
@@ -885,15 +952,17 @@ const PAGINAS = [
       F.chips('estado', 'Validación', r => r.estado),
       F.chips('enc', 'Encargado', r => r.encargado),
       F.chips('doc', 'Tipo doc.', r => r.doc),
+      F.chips('pdfc', 'PDF', r => (r.pdf_nombre || r.pdf) ? 'Con PDF' : 'Sin PDF'),
     ],
     cuerpo(filas, el) {
       const pend = filas.filter(r => r.estado === 'Pendiente');
+      const conPdf = filas.filter(r => r.pdf_nombre || r.pdf).length;
       const mes = (S.datos.cruce[0] || {}).mes_cruce;
       el.innerHTML = kpis([
         { l: 'Faltantes', v: nf.format(pend.length), c: pend.length ? 'rojo' : 'verde', s: 'por ingresar en INET' },
         { l: 'Monto faltante', v: clp(suma(pend, r => r.monto_total)) },
         { l: 'Más atrasado', v: pend.length ? Math.min(...pend.map(r => r.dias_atraso)) + ' días' : '–' },
-        { l: 'Mes cruce', v: esc(mes || '–'), s: 'Documentos mostrados: ' + nf.format(filas.length) },
+        { l: 'PDF subidos', v: nf.format(conPdf) + ' / ' + nf.format(filas.length), s: 'Mes cruce: ' + esc(mes || '–'), c: conPdf === filas.length && filas.length ? 'verde' : '' },
       ]) + '<div id="t1"></div>';
       tabla($('#t1'), { titulo: 'Documentos SII vs libro de compras', filas, orden: 9, dir: 1, alto: 620, cols: COLS_CRUCE() });
     } },
@@ -926,7 +995,7 @@ const PAGINAS = [
         { t: 'Días crédito', v: r => r.credito, f: 'num' },
         { t: 'Vence crédito en', v: r => r.credito == null ? null : r.credito + r.dias_atraso, f: 'num',
           html: r => r.credito == null ? '' : (r.credito + r.dias_atraso < 0 ? `<b style="color:var(--rojo)">Vencido (${-(r.credito + r.dias_atraso)} d)</b>` : `${r.credito + r.dias_atraso} días`) },
-        { t: 'Encargado', v: r => r.encargado }, { t: 'PDF', v: r => r.pdf, f: 'pdf' } ] });
+        { t: 'Encargado', v: r => r.encargado }, { t: 'PDF', v: r => r.pdf_nombre || r.pdf, html: r => celdaPdf(r) } ] });
     } },
 
   { id: 'rapido', grupo: 'Cruce de facturas', titulo: 'Entregar rápido', ic: 'rayo', desc: 'Faltantes con monto neto sobre $1.500.000.',

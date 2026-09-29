@@ -92,6 +92,12 @@ a{color:var(--verde-osc)}
 .grid>*{min-width:0}
 .g2{grid-template-columns:2fr 1fr}
 .g2b{grid-template-columns:1fr 1fr}
+.g3c{grid-template-columns:3fr 1fr}
+.sem{display:inline-flex;align-items:center;gap:6px}
+.sem svg{flex:none}
+.meses{display:inline-flex;gap:3px;flex-wrap:nowrap}
+.meses span{background:#F1F5EE;border:1px solid var(--borde);border-radius:5px;padding:0 5px;font-size:11.5px}
+table.t tr.clic{cursor:pointer}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
 .kpi{background:#fff;border:1px solid var(--borde);border-radius:var(--r);padding:13px 16px;box-shadow:var(--sombra)}
 .kpi .l{font-size:11px;color:var(--txt2);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
@@ -182,7 +188,7 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 @keyframes g{to{transform:rotate(360deg)}}
 .vacio{padding:30px;text-align:center;color:var(--txt2)}
 
-@media (max-width:1100px){.g2,.g2b{grid-template-columns:1fr}}
+@media (max-width:1100px){.g2,.g2b,.g3c{grid-template-columns:1fr}}
 @media (max-width:820px){
   #nav{position:fixed;left:0;top:0;z-index:60;transform:translateX(-100%);transition:.2s;box-shadow:0 0 30px rgba(0,0,0,.2)}
   #nav.abierto{transform:none}
@@ -479,8 +485,9 @@ function tabla(el, cfg) {
     const vis = f.slice(st.pag * TAM, st.pag * TAM + TAM);
     const tot = cfg.cols.map(c => c.sum ? f.reduce((s,r) => s + (c.v(r) || 0), 0) : null);
     body.innerHTML = `<table class="t"><thead><tr>${cfg.cols.map((c,i) => `<th data-i="${i}" class="${esNum(c) ? 'n' : ''}">${esc(c.t)}${st.orden === i ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
-      <tbody>${vis.map(r => `<tr>${cfg.cols.map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}" title="${c.f === 'pdf' || c.html ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
+      <tbody>${vis.map((r, ri) => `<tr${cfg.alClic ? ` data-ri="${ri}" class="clic"` : ''}>${cfg.cols.map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}" title="${c.f === 'pdf' || c.html ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
       ${tot.some(x => x != null) ? `<tfoot><tr>${cfg.cols.map((c,i) => `<td class="${esNum(c) ? 'n' : ''}">${i === 0 ? 'Total' : tot[i] != null ? FMT[c.f](tot[i]) : ''}</td>`).join('')}</tr></tfoot>` : ''}</table>`;
+    if (cfg.alClic) body.querySelectorAll('tr[data-ri]').forEach(tr => tr.onclick = e => { if (e.target.closest('a')) return; cfg.alClic(vis[+tr.dataset.ri]); });
     body.querySelectorAll('th').forEach(th => th.onclick = () => { const i = +th.dataset.i; if (st.orden === i) st.dir *= -1; else { st.orden = i; st.dir = esNum(cfg.cols[i]) ? -1 : 1; } pintar(); });
     el.querySelector('.cnt').textContent = `${nf.format(f.length)} filas`;
     el.querySelector('.info').textContent = f.length ? `Filas ${nf.format(st.pag * TAM + 1)}–${nf.format(Math.min(f.length, st.pag * TAM + TAM))} de ${nf.format(f.length)}` : '';
@@ -603,6 +610,11 @@ function celdaAtraso(d) {
   const bg = `rgb(${mix(160,242)},${mix(209,6)},${mix(255,24)})`;
   return `<span style="display:inline-block;min-width:44px;text-align:right;padding:1px 6px;border-radius:4px;background:${bg};color:${t > .5 ? '#fff' : '#1F2A1A'};font-weight:600">${d}</span>`;
 }
+// Semáforo de meses adeudados: 1 = verde, 2 = amarillo, 3 o más = rojo
+function semaforo(n) {
+  const [c, ic, t] = n >= 3 ? ['#D93025', '<path d="M8 8l8 8M16 8l-8 8"/>', 'No cumple'] : n === 2 ? ['#E09A1A', '<path d="M12 7v6M12 16.5v.5"/>', 'Atención'] : ['#2E9E4F', '<path d="M7.5 12.5l3 3 6-6.5"/>', 'Cumple'];
+  return `<span class="sem" title="${t}"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="10.5" fill="${c}"/><g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">${ic}</g></svg><b>${n}</b></span>`;
+}
 const COLS_CRUCE = () => [
   { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social }, { t: 'DOC', v: r => r.doc },
   { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
@@ -699,30 +711,58 @@ const PAGINAS = [
         niveles: [{ t: 'Año', v: r => anio(r.fecha_vencto) }], col: { v: r => mes(r.fecha_vencto), fmt: m => MES3[m - 1] || m } });
     } },
 
-  { id: 'contratistas', titulo: 'Ret. contratistas por pagar', ic: 'casco', desc: 'Saldos por pagar a contratistas (cuenta 2107101).',
+  { id: 'contratistas', titulo: 'Ret. contratistas por pagar', ic: 'casco', desc: 'Retenciones faltantes por contratista, mes y año, con semáforo de meses adeudados.',
     src: d => d.saldo, defaults: { tipo: ['CONTRATISTA'] },
     filtros: [
-      F.prov(r => r.razon_social),
-      F.multi('ana', 'RUT (análisis)', r => r.analisis),
+      F.chips('anio', 'Año', r => anio(r.fecha_docto)),
+      F.chips('mes', 'Mes', r => mes(r.fecha_docto), fMes),
+      F.prov(r => r.razon_social, 'Nombre o razón social'),
       F.chips('tipo', 'Tipo', r => r.tipo),
-      F.chips('anio', 'Año docto', r => anio(r.fecha_docto)),
-      F.chips('mes', 'Mes docto', r => mes(r.fecha_docto), fMes),
     ],
-    cuerpo(filas, el) {
+    cuerpo(filas, el, p) {
+      // 1) Contratista + año + mes -> monto adeudado (se omiten meses con saldo 0)
+      const g = new Map();
+      for (const r of filas) {
+        const y = anio(r.fecha_docto), m = mes(r.fecha_docto), k = r.analisis + '|' + y + '|' + m;
+        const o = g.get(k) || { analisis: r.analisis, razon_social: r.razon_social, anio: y, mes: m, monto: 0, docs: 0 };
+        o.monto += r.saldo || 0; o.docs++; g.set(k, o);
+      }
+      const meses = [...g.values()].filter(o => Math.round(o.monto) !== 0);
+      // 2) Contratista -> cantidad de meses adeudados + monto
+      const c = new Map();
+      for (const o of meses) {
+        const x = c.get(o.analisis) || { analisis: o.analisis, razon_social: o.razon_social, meses: 0, monto: 0, detalle: [] };
+        x.meses++; x.monto += o.monto; x.detalle.push(o); c.set(o.analisis, x);
+      }
+      const cont = [...c.values()];
+      cont.forEach(x => x.detalle.sort((a, b) => (a.anio - b.anio) || (a.mes - b.mes)));
+      // 3) Periodo (año -> monto)
+      const per = agrupar(meses, o => o.anio, o => o.monto);
+      const rojos = cont.filter(x => x.meses >= 3).length, amar = cont.filter(x => x.meses === 2).length, verdes = cont.filter(x => x.meses === 1).length;
+
       el.innerHTML = kpis([
-        { l: 'Saldo por pagar', v: clp(suma(filas, r => r.saldo)) },
-        { l: 'Documentos', v: nf.format(filas.length) },
-        { l: 'Contratistas', v: nf.format(new Set(filas.map(r => r.analisis)).size) },
-      ]) + '<div id="t1" class="mb"></div><div class="grid g2b"><div id="m1"></div><div id="m2"></div></div>';
-      tabla($('#t1'), { titulo: 'Documentos por pagar', filas, orden: 1, dir: -1, alto: 400, cols: [
-        { t: 'Tipo compte', v: r => r.tipo_compte }, { t: '# Compte', v: r => r.n_compte, f: 'num' }, { t: 'Análisis', v: r => r.analisis },
-        { t: 'Nombre o razón social', v: r => r.razon_social }, { t: '# Docto', v: r => r.n_docto },
-        { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
-        { t: 'Saldo', v: r => r.saldo, f: 'clp', sum: true }, { t: 'PDF', v: r => r.foto, f: 'pdf' } ] });
-      matriz($('#m1'), { titulo: 'Saldo por año y mes', filas, val: r => r.saldo, alto: 330,
-        niveles: [{ t: 'Año', v: r => anio(r.fecha_docto), desc: true }, { t: 'Mes', v: r => mes(r.fecha_docto), fmt: fMes.fmt }] });
-      matriz($('#m2'), { titulo: 'Saldo por proveedor', filas, val: r => r.saldo, alto: 330,
-        niveles: [{ t: 'Proveedor', v: r => r.razon_social, orden: 'valor' }] });
+        { l: 'Monto adeudado', v: clp(suma(meses, o => o.monto)) },
+        { l: 'Contratistas', v: nf.format(cont.length), s: nf.format(meses.length) + ' meses adeudados en total' },
+        { l: '3 o más meses', v: nf.format(rojos), c: rojos ? 'rojo' : '', s: 'semáforo rojo' },
+        { l: '2 meses / 1 mes', v: nf.format(amar) + ' / ' + nf.format(verdes), s: 'amarillo / verde' },
+      ]) + `<div class="grid g3c mb"><div id="t2"></div><div id="t3"></div></div><div id="t1"></div>`;
+
+      tabla($('#t1'), { titulo: 'Contratistas, mes y año · retención faltante', filas: meses, orden: 1, dir: 1, alto: 480, tam: 200, cols: [
+        { t: 'Análisis', v: o => o.analisis }, { t: 'Nombre o razón social', v: o => o.razon_social },
+        { t: 'Año', v: o => o.anio }, { t: 'Mes', v: o => o.mes, html: o => MESES[o.mes - 1] || '' },
+        { t: 'Docs', v: o => o.docs, f: 'num' },
+        { t: 'Monto', v: o => o.monto, f: 'clp', sum: true } ] });
+
+      tabla($('#t2'), { titulo: 'Cantidad de meses faltantes (clic en un contratista para filtrar)', filas: cont, orden: 1, dir: -1, alto: 420, tam: 200, buscar: false,
+        alClic: x => { const Fl = fget(p); Fl.prov = (Fl.prov || []).length === 1 && Fl.prov[0] === x.razon_social ? [] : [x.razon_social]; refrescar(p); },
+        cols: [
+          { t: 'Nombre o razón social', v: x => x.razon_social },
+          { t: 'Cumple', v: x => x.meses, f: 'num', html: x => semaforo(x.meses) },
+          { t: 'Meses adeudados', v: x => x.detalle.length, html: x => `<span class="meses">${x.detalle.map(o => `<span title="${clp(o.monto)}">${MES3[o.mes - 1]} ${String(o.anio).slice(2)}</span>`).join('')}</span>` },
+          { t: 'Monto', v: x => x.monto, f: 'clp', sum: true } ] });
+
+      tabla($('#t3'), { titulo: 'Periodo', filas: [...per].sort((a, b) => a[0] - b[0]).map(([y, v]) => ({ y, v })), buscar: false, alto: 300, cols: [
+        { t: 'Año', v: o => o.y }, { t: 'Monto', v: o => o.v, f: 'clp', sum: true } ] });
     } },
 
   { id: 'proyectos', titulo: 'Documentos proyectos', ic: 'proy', desc: 'Pagos asociados a proyectos (Facturas proyectos).',

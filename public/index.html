@@ -52,6 +52,7 @@ a{color:var(--verde-osc)}
 #nav nav a.act{background:var(--verde-claro);color:var(--verde-osc)}
 #nav nav a.act svg{color:var(--verde-osc)}
 #nav nav .sep{height:1px;background:var(--borde);margin:8px 6px}
+#nav nav .grp{font-size:10.5px;font-weight:700;color:var(--txt2);text-transform:uppercase;letter-spacing:.05em;padding:4px 10px 4px}
 #nav .pie{padding:12px 16px;border-top:1px solid var(--borde);color:var(--txt2);font-size:11.5px}
 #main{flex:1;min-width:0;display:flex;flex-direction:column}
 #top{display:flex;align-items:center;gap:12px;padding:14px 22px;background:#fff;border-bottom:1px solid var(--borde);position:sticky;top:0;z-index:20}
@@ -108,10 +109,10 @@ a{color:var(--verde-osc)}
 
 /* ---------- Tablas ---------- */
 table.t{border-collapse:separate;border-spacing:0;width:100%;font-variant-numeric:tabular-nums}
-table.t th{position:sticky;top:0;background:#F1F5EE;z-index:2;text-align:left;font-weight:600;font-size:11.5px;color:var(--txt2);padding:8px 10px;border-bottom:1px solid var(--borde);white-space:nowrap;cursor:pointer;user-select:none}
+table.t th{position:sticky;top:0;background:#F1F5EE;z-index:2;text-align:left;font-weight:600;font-size:11.5px;color:var(--txt2);padding:8px 8px;border-bottom:1px solid var(--borde);white-space:nowrap;cursor:pointer;user-select:none}
 table.t th.n,table.t td.n{text-align:right}
 table.t th:hover{color:var(--txt)}
-table.t td{padding:6px 10px;border-bottom:1px solid #EEF2EB;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+table.t td{padding:6px 8px;border-bottom:1px solid #EEF2EB;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 table.t tbody tr:hover td{background:var(--verde-suave)}
 table.t tfoot td{position:sticky;bottom:0;background:#F1F5EE;font-weight:700;border-top:1px solid var(--borde)}
 table.t td.neg{color:var(--rojo)}
@@ -275,6 +276,8 @@ const IC = {
   graf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>',
   gente:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8M22 21a7 7 0 0 0-5-6.7"/></svg>',
   subir:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>',
+  cruce:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+  rayo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>',
   flecha:'<svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
 
@@ -304,14 +307,15 @@ async function traerVista(v, onProg) {
 async function cargarTodo() {
   $('#contenido').innerHTML = `<div class="cargando"><div class="spin"></div><div id="progTxt">Leyendo datos desde Neon…</div></div>`;
   S.estado = await api('/api/datos?v=estado');
-  let n = 0; const prog = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/4)`; };
+  let n = 0; const prog = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n})`; };
   const vistas = S.estado.vistas || []; const tot = vistas.length;
   const prog2 = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/${tot})`; };
-  const [compras, saldo, pagos, maestro] = await Promise.all(['compras','saldo','pagos','maestro'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
+  const [compras, saldo, pagos, maestro, cruce] = await Promise.all(['compras','saldo','pagos','maestro','cruce'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
   compras.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   saldo.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   pagos.forEach(r => r.nombre_proveedor = limpiarNombre(r.nombre_proveedor));
-  S.datos = { compras, saldo, pagos, maestro };
+  cruce.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
+  S.datos = { compras, saldo, pagos, maestro, cruce };
   pintarActualizacion();
 }
 const limpiarNombre = s => s == null ? s : String(s).replace(/^'+/, '').trim();
@@ -591,6 +595,24 @@ const F = {
 };
 const pdfSN = r => r.foto ? 'Con PDF' : 'Sin PDF';
 
+function celdaAtraso(d) {
+  if (d == null) return '';
+  // Igual que el PBI: 0 = celeste, -15 o menos = rojo
+  const t = Math.max(0, Math.min(1, -d / 15));
+  const mix = (a, b) => Math.round(a + (b - a) * t);
+  const bg = `rgb(${mix(160,242)},${mix(209,6)},${mix(255,24)})`;
+  return `<span style="display:inline-block;min-width:44px;text-align:right;padding:1px 6px;border-radius:4px;background:${bg};color:${t > .5 ? '#fff' : '#1F2A1A'};font-weight:600">${d}</span>`;
+}
+const COLS_CRUCE = () => [
+  { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social }, { t: 'DOC', v: r => r.doc },
+  { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
+  { t: 'Exento', v: r => r.monto_exento, f: 'clp', sum: true },
+  { t: 'Neto', v: r => r.monto_neto, f: 'clp', sum: true, html: r => r.monto_neto > 1500000 ? `<b style="color:var(--rojo)">${clp(r.monto_neto)}</b>` : clp(r.monto_neto) },
+  { t: 'IVA', v: r => r.monto_iva, f: 'clp', sum: true },
+  { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
+  { t: 'Días atraso', v: r => r.dias_atraso, f: 'num', html: r => celdaAtraso(r.dias_atraso) },
+  { t: 'PDF', v: r => r.pdf, f: 'pdf' },
+];
 const PAGINAS = [
   { id: 'inicio', titulo: 'Inicio', ic: 'home', desc: '' },
 
@@ -814,6 +836,72 @@ const PAGINAS = [
         { t: 'Comuna', v: r => r.comuna ? r.comuna.trim() : '' } ] });
     } },
 
+
+  // ---------------- CRUCE DE FACTURAS (SII vs INET) ----------------
+  { id: 'cruce', grupo: 'Cruce de facturas', titulo: 'Cruce facturas', ic: 'cruce', desc: 'Documentos del SII que aún no están ingresados en INET (faltantes).',
+    src: d => d.cruce, defaults: { estado: ['Pendiente'] },
+    filtros: [
+      F.prov(r => r.razon_social, 'Razón social'),
+      F.chips('estado', 'Validación', r => r.estado),
+      F.chips('enc', 'Encargado', r => r.encargado),
+      F.chips('doc', 'Tipo doc.', r => r.doc),
+    ],
+    cuerpo(filas, el) {
+      const pend = filas.filter(r => r.estado === 'Pendiente');
+      const mes = (S.datos.cruce[0] || {}).mes_cruce;
+      el.innerHTML = kpis([
+        { l: 'Faltantes', v: nf.format(pend.length), c: pend.length ? 'rojo' : 'verde', s: 'por ingresar en INET' },
+        { l: 'Monto faltante', v: clp(suma(pend, r => r.monto_total)) },
+        { l: 'Más atrasado', v: pend.length ? Math.min(...pend.map(r => r.dias_atraso)) + ' días' : '–' },
+        { l: 'Mes cruce', v: esc(mes || '–'), s: 'Documentos mostrados: ' + nf.format(filas.length) },
+      ]) + '<div id="t1"></div>';
+      tabla($('#t1'), { titulo: 'Documentos SII vs libro de compras', filas, orden: 9, dir: 1, alto: 620, cols: COLS_CRUCE() });
+    } },
+
+  { id: 'atrasos', grupo: 'Cruce de facturas', titulo: 'Atrasos', ic: 'reloj', desc: 'Faltantes por encargado y proveedor, con días de crédito.',
+    src: d => d.cruce, defaults: { estado: ['Pendiente'] },
+    filtros: [
+      F.chips('enc', 'Encargado', r => r.encargado),
+      F.prov(r => r.razon_social, 'Razón social'),
+      F.chips('estado', 'Validación', r => r.estado),
+      F.chips('pago15', 'Pago -15 días', r => r.pago15),
+    ],
+    cuerpo(filas, el) {
+      const venc = filas.filter(r => r.credito != null && r.credito + r.dias_atraso < 0);
+      el.innerHTML = kpis([
+        { l: 'Documentos', v: nf.format(filas.length) },
+        { l: 'Atraso > 15 días', v: nf.format(filas.filter(r => r.dias_atraso < -15).length), c: 'rojo' },
+        { l: 'Crédito vencido', v: nf.format(venc.length), s: clp(suma(venc, r => r.monto_total)), c: venc.length ? 'rojo' : '' },
+      ]) + '<div class="grid g2b mb"><div id="c1"></div><div id="m1"></div></div><div id="t1"></div>';
+      const pe = agrupar(filas, r => r.encargado, () => 1);
+      barrasH($('#c1'), { titulo: 'Documentos por encargado', fmt: 'num', datos: [...pe].sort((a,b) => b[1] - a[1]).map(([l,v]) => ({ l, v })) });
+      matriz($('#m1'), { titulo: 'Proveedores con más atraso', filas, val: () => 1, fmt: 'num', alto: 330,
+        niveles: [{ t: 'Proveedor', v: r => r.razon_social, orden: 'valor' }],
+        col: { v: r => r.dias_atraso < -15 ? '> 15 días' : r.dias_atraso < -7 ? '8–15 días' : '0–7 días', sort: (a,b) => ['0–7 días','8–15 días','> 15 días'].indexOf(a) - ['0–7 días','8–15 días','> 15 días'].indexOf(b) } });
+      tabla($('#t1'), { titulo: 'Detalle de atrasos', filas, orden: 6, dir: 1, alto: 520, cols: [
+        { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social }, { t: 'DOC', v: r => r.doc },
+        { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
+        { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
+        { t: 'Días atraso', v: r => r.dias_atraso, f: 'num', html: r => celdaAtraso(r.dias_atraso) },
+        { t: 'Días crédito', v: r => r.credito, f: 'num' },
+        { t: 'Vence crédito en', v: r => r.credito == null ? null : r.credito + r.dias_atraso, f: 'num',
+          html: r => r.credito == null ? '' : (r.credito + r.dias_atraso < 0 ? `<b style="color:var(--rojo)">Vencido (${-(r.credito + r.dias_atraso)} d)</b>` : `${r.credito + r.dias_atraso} días`) },
+        { t: 'Encargado', v: r => r.encargado }, { t: 'PDF', v: r => r.pdf, f: 'pdf' } ] });
+    } },
+
+  { id: 'rapido', grupo: 'Cruce de facturas', titulo: 'Entregar rápido', ic: 'rayo', desc: 'Faltantes con monto neto sobre $1.500.000.',
+    src: d => d.cruce.filter(r => (r.monto_neto || 0) > 1500000), defaults: { estado: ['Pendiente'] },
+    filtros: [
+      F.chips('enc', 'Encargado', r => r.encargado),
+      F.chips('estado', 'Validación', r => r.estado),
+    ],
+    cuerpo(filas, el) {
+      el.innerHTML = kpis([
+        { l: 'Documentos', v: nf.format(filas.length), c: filas.length ? 'rojo' : 'verde', s: 'neto sobre $1.500.000' },
+        { l: 'Monto total', v: clp(suma(filas, r => r.monto_total)) },
+      ]) + '<div id="t1"></div>';
+      tabla($('#t1'), { titulo: 'Entregar rápido', filas, orden: 9, dir: 1, alto: 620, cols: COLS_CRUCE() });
+    } },
   { id: 'cargar', titulo: 'Actualizar datos', ic: 'subir', desc: 'Sube los Excel para actualizar la base de datos en Neon.', soloAdmin: true },
   { id: 'usuarios', titulo: 'Usuarios y permisos', ic: 'gente', desc: 'Crea usuarios y elige qué páginas ve cada uno.', soloAdmin: true },
 ];
@@ -829,7 +917,9 @@ function permitida(p) {
    Navegación / render
    ===================================================================== */
 function pintarMenu() {
+  let g0 = null;
   $('#menu').innerHTML = PAGINAS.filter(permitida).map((p, i) => (p.id === 'cargar' ? '<div class="sep"></div>' : '') +
+    (p.grupo && p.grupo !== g0 ? (g0 = p.grupo, `<div class="sep"></div><div class="grp">${esc(p.grupo)}</div>`) : '') +
     `<a href="#${p.id}" class="${S.pagina === p.id ? 'act' : ''}">${IC[p.ic]}${esc(p.titulo)}</a>` + (i === 0 ? '<div class="sep"></div>' : '')).join('');
 }
 
@@ -871,6 +961,7 @@ function pintarInicio(c) {
     ${(() => { if (!d) return ''; const pg = (S.estado && S.estado.paginas) || []; const k = [];
       if (pg.includes('porpagar') && d.saldo.length) k.push({ l: 'Saldo por pagar', v: clp(saldo), s: 'Cuenta 2107101' }, { l: 'Vencido', v: clp(venc), c: 'rojo', s: 'al ' + fecha(hoy) });
       if (pg.includes('pagos') && d.pagos.length) k.push({ l: 'Pagado ' + y, v: clp(pagAnio), c: 'verde' });
+      if (pg.includes('cruce') && d.cruce.length) { const pe = d.cruce.filter(r => r.estado === 'Pendiente'); k.push({ l: 'Faltantes cruce SII', v: nf.format(pe.length), c: pe.length ? 'rojo' : 'verde', s: clp(suma(pe, r => r.monto_total)) + ' por ingresar' }); }
       if (pg.includes('facturas') && d.compras.length) k.push({ l: 'Facturas con PDF', v: pct(conPdf, d.compras.length), s: nf.format(d.compras.length - conPdf) + ' sin PDF' });
       if (k.length) return kpis(k);
       if (S.estado.admin && !d.compras.length) return '<div class="aviso">La base de datos está vacía. Entra a <a href="#cargar">Actualizar datos</a> y sube los Excel de la carpeta MAESTRO PROVEEDORES.</div>';
@@ -883,9 +974,18 @@ function pintarInicio(c) {
    ===================================================================== */
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const serialAISO = n => { const d = new Date(Math.round((n - 25569) * 864e5)); return d.toISOString(); };
+// Corrige textos con tildes/ñ mal codificados (ej. "COMPAÃ‘IA" -> "COMPAÑIA"), como vienen a veces del SII
+const CP1252 = {0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F};
+function arreglarTexto(s) {
+  if (!/[ÃÂ]/.test(s)) return s;
+  try {
+    const bytes = []; for (const ch of s) { const c = ch.codePointAt(0); if (c < 256) bytes.push(c); else if (CP1252[c]) bytes.push(CP1252[c]); else return s; }
+    return new TextDecoder('utf-8', { fatal: true }).decode(new Uint8Array(bytes));
+  } catch (e) { return s; }
+}
 const conv = {
   t: v => { if (v == null) return null; const s = String(v).trim(); return s === '' ? null : s; },
-  nom: v => { if (v == null) return null; const s = String(v).replace(/^'+/, '').trim(); return s === '' ? null : s; },
+  nom: v => { if (v == null) return null; const s = arreglarTexto(String(v).replace(/^'+/, '').trim()); return s === '' ? null : s; },
   n: v => { if (v == null || v === '') return null; if (typeof v === 'number') return isFinite(v) ? v : null; const x = Number(String(v).replace(/\s|\$/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return isFinite(x) ? x : null; },
   i: v => { const x = conv.n(v); return x == null ? null : Math.round(x); },
   it: v => { if (v == null || v === '') return null; if (typeof v === 'number') return String(Math.round(v)); const s = String(v).trim(); return /^\d+(\.0+)?$/.test(s) ? String(parseInt(s, 10)) : (s || null); },
@@ -939,6 +1039,19 @@ const MAPEOS = {
     ['correo','CORREOELECTRONICO','t'],['telefono','TELEFONO','t'],['atendido_por','ATENDIDOPOR','t'],['cargo','CARGO','t'],['web','PAGINAWEB','t']],
     filtro: r => r.rut_inet != null || r.razon_social != null },
   bancos: { archivo: 'MAESTRO PROVEEDORES.xlsx', hoja: 'BANCOS', clave: 'CODIGO', cols: [['codigo','CODIGO','i'],['nombre','NOMBRE','t']], filtro: r => r.codigo != null },
+  // ----- CRUCE DE FACTURAS.xlsx -----
+  cruce_sii: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'SII', clave: 'RUTPROVEEDOR', cols: [
+    ['tipo_doc','TIPODOC','i'],['rut','RUTPROVEEDOR','t'],['razon_social','RAZONSOCIAL','nom'],['folio','FOLIO','i'],['fecha_docto','FECHADOCTO','d'],
+    ['monto_exento','MONTOEXENTO','n'],['monto_neto','MONTONETO','n'],['monto_iva','MONTOIVARECUPERABLE','n'],['monto_iva_no_rec','MONTOIVANORECUPERABLE','n'],['monto_total','MONTOTOTAL','n']],
+    filtro: r => r.folio != null && r.rut != null },
+  cruce_inet: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'INET', clave: 'TOTALDOCUMENTO', cols: [
+    ['n_compte','COMPTE','i'],['rut','RUT','t'],['razon_social','NOMBREORAZONSOCIAL','nom'],['folio','DOCTO','i'],['fecha_docto','FCHDOCTO','d'],['total','TOTALDOCUMENTO','n']],
+    filtro: r => r.n_compte != null && r.folio != null },
+  cruce_prov: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'PROV', clave: 'ENCARGADO', cols: [
+    ['rut','RUT','t'],['proveedor','PROVEEDOR','nom'],['encargado','ENCARGADO','t'],['pago15','PAGO15','t'],['credito','CREDITO','i']], filtro: r => r.rut != null },
+  cruce_docs: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'DOCUMENTOS', clave: 'PDF', cols: [['id','ID','it'],['pdf','PDF','t']], filtro: r => r.id != null && r.pdf != null },
+  cruce_tipos: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'Hoja1', clave: 'TIPODOC', cols: [['doc','DOC','i'],['tipo','TIPODOC','t']], filtro: r => r.doc != null },
+  cruce_param: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'DIESEL', especial: ws => { const c = ws['B2']; return { filas: c && c.v ? [{ clave: 'mes_cruce', valor: String(c.v).trim() }] : [], faltan: c && c.v ? [] : ['B2 (mes actual)'] }; } },
 };
 
 function leerHoja(ws, m) {
@@ -974,6 +1087,7 @@ function pintarCargar(c) {
           <li><b>CUENTAS.xlsx</b> → Cuenta 2107101, Listado prov.</li>
           <li><b>DOCUMENTOS PROVEEDORES.xlsx</b> → PDFs escaneados</li>
           <li><b>MAESTRO PROVEEDORES.xlsx</b> → Maestro, Bancos</li>
+          <li><b>CRUCE DE FACTURAS.xlsx</b> → Cruce SII vs INET (hojas SII, INET, PROV, DOCUMENTOS, DIESEL)</li>
         </ol></div></div>
       <div class="card"><div class="card-h"><h3>2. Revisa y sube a Neon</h3></div><div style="padding:14px">
         <table class="t estado-carga"><thead><tr><th>Tabla</th><th>Origen</th><th class="n">Filas</th></tr></thead><tbody id="prevCarga"></tbody></table>
@@ -1010,7 +1124,7 @@ async function leerArchivos(files) {
         const hit = nombres.find(([, u]) => u === m.hoja.toUpperCase()) || (t === 'compras' ? nombres.find(([, u]) => u.startsWith('COMPRAS')) : null);
         if (!hit) continue;
         // Hoja1 / Hoja2 / Hoja4 solo cuentan si vienen del libro de pagos (se valida por columnas)
-        try { const r = leerHoja(wb.Sheets[hit[0]], m); if (!r.filas.length && /^HOJA/.test(hit[1])) continue; PREP[t] = { ...r, archivo: f.name }; usados++; } catch (e) { if (!/^HOJA/.test(hit[1])) msg.textContent = e.message; }
+        try { const r = m.especial ? m.especial(wb.Sheets[hit[0]]) : leerHoja(wb.Sheets[hit[0]], m); if (!r.filas.length && /^HOJA/.test(hit[1])) continue; PREP[t] = { ...r, archivo: f.name }; usados++; } catch (e) { if (!/^HOJA/.test(hit[1])) msg.textContent = e.message; }
       }
       if (!usados) msg.textContent = `${f.name}: no reconocí ninguna hoja.`;
     } catch (e) { msg.textContent = `No pude leer ${f.name}: ${e.message}`; }

@@ -1,15 +1,15 @@
-import { db, autorizado, json } from '../lib/db.js';
+import { db, autorizar, json } from '../lib/db.js';
 import { asegurarEsquema, TABLAS } from '../lib/schema.js';
 
 // POST /api/cargar  { tabla, reemplazar, filas: [ {col: valor} ] }   ó   { fin: true, detalle: {...} }
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { error: 'Usa POST' });
-  const a = autorizado(req, true);
-  if (!a.ok) return json(res, 401, { error: a.msg });
   try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     const pool = db();
     await asegurarEsquema(pool);
+    const a = await autorizar(req, { admin: true });
+    if (!a.ok) return json(res, 401, { error: a.msg });
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
     if (body.fin) {
       await pool.query(`INSERT INTO cargas (detalle) VALUES ($1)`, [JSON.stringify(body.detalle || {})]);

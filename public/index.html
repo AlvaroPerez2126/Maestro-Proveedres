@@ -159,7 +159,7 @@ table.pv td.cero{color:#C3C9BF}
 .tile span{color:var(--txt2);font-size:12px;line-height:1.4}
 
 /* ---------- Cargar ---------- */
-.drop{border:2px dashed #C9D6C0;border-radius:12px;padding:30px;text-align:center;background:#fff;cursor:pointer}
+.drop{display:block;border:2px dashed #C9D6C0;border-radius:12px;padding:30px;text-align:center;background:#fff;cursor:pointer}
 .drop:hover,.drop.sobre{border-color:var(--verde);background:var(--verde-suave)}
 .drop b{display:block;font-size:14.5px;margin-bottom:4px}
 .pasos{margin:0;padding-left:18px;color:var(--txt2);line-height:1.7}
@@ -169,6 +169,13 @@ table.pv td.cero{color:#C3C9BF}
 .barra div{height:100%;background:var(--verde);width:0;transition:width .2s}
 .aviso{background:var(--ambar-claro);border:1px solid #F3DDA8;color:#7A5410;border-radius:9px;padding:10px 13px;margin-bottom:14px}
 
+.inp{border:1px solid var(--borde);border-radius:7px;padding:8px 10px;width:100%}
+.inp:focus{outline:2px solid var(--verde);border-color:transparent}
+.inp[readonly]{background:#F1F5EE}
+.lbl{font-size:11px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:.03em}
+.permisos{display:grid;grid-template-columns:1fr 1fr;gap:2px;border:1px solid var(--borde);border-radius:8px;padding:6px}
+.op input{accent-color:var(--verde)}
+label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5px;cursor:pointer;text-transform:none;font-size:13px;font-weight:400;color:var(--txt);letter-spacing:0}
 .cargando{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:80px 20px;color:var(--txt2)}
 .spin{width:28px;height:28px;border:3px solid var(--verde-claro);border-top-color:var(--verde);border-radius:50%;animation:g 1s linear infinite}
 @keyframes g{to{transform:rotate(360deg)}}
@@ -201,7 +208,8 @@ table.pv td.cero{color:#C3C9BF}
     <img src="logo.png" alt="MONFRUT">
     <h1>Maestro de Proveedores</h1>
     <p>Facturas, compras, pagos y documentos por pagar</p>
-    <input type="password" id="clave" placeholder="Clave de acceso" autocomplete="current-password" required>
+    <input type="text" id="usuario" placeholder="Usuario" autocomplete="username" autocapitalize="none" spellcheck="false">
+    <input type="password" id="clave" placeholder="Clave" autocomplete="current-password" required>
     <button class="btn prim full" type="submit">Entrar</button>
     <div class="err" id="loginErr"></div>
   </form>
@@ -220,6 +228,7 @@ table.pv td.cero{color:#C3C9BF}
       <h2 id="titulo">Inicio</h2>
       <span class="act-info" id="actInfo"></span>
       <button class="btn" id="btnRecargar" title="Volver a leer los datos desde Neon">Recargar</button>
+      <button class="btn" id="btnSalir" title="Cerrar sesión">Salir</button>
     </header>
     <div id="contenido"></div>
   </div>
@@ -272,10 +281,10 @@ const IC = {
 /* =====================================================================
    Estado + API
    ===================================================================== */
-const S = { clave: ss.get('clave') || '', datos: null, estado: null, pagina: 'inicio', filtros: {}, opc: {}, abierto: null };
+const S = { usuario: ss.get('usuario') || '', clave: ss.get('clave') || '', datos: null, estado: null, pagina: 'inicio', filtros: {}, opc: {}, abierto: null };
 
 async function api(path, opts = {}) {
-  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-clave': S.clave, ...(opts.headers || {}) } });
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': encodeURIComponent(S.clave), ...(opts.headers || {}) } });
   let j; try { j = await r.json(); } catch(e) { throw new Error('Respuesta inválida del servidor (' + r.status + ')'); }
   if (!r.ok) { const e = new Error(j.error || ('Error ' + r.status)); e.status = r.status; throw e; }
   return j;
@@ -296,7 +305,9 @@ async function cargarTodo() {
   $('#contenido').innerHTML = `<div class="cargando"><div class="spin"></div><div id="progTxt">Leyendo datos desde Neon…</div></div>`;
   S.estado = await api('/api/datos?v=estado');
   let n = 0; const prog = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/4)`; };
-  const [compras, saldo, pagos, maestro] = await Promise.all(['compras','saldo','pagos','maestro'].map(v => traerVista(v, prog)));
+  const vistas = S.estado.vistas || []; const tot = vistas.length;
+  const prog2 = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/${tot})`; };
+  const [compras, saldo, pagos, maestro] = await Promise.all(['compras','saldo','pagos','maestro'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
   compras.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   saldo.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   pagos.forEach(r => r.nombre_proveedor = limpiarNombre(r.nombre_proveedor));
@@ -803,24 +814,34 @@ const PAGINAS = [
         { t: 'Comuna', v: r => r.comuna ? r.comuna.trim() : '' } ] });
     } },
 
-  { id: 'cargar', titulo: 'Actualizar datos', ic: 'subir', desc: 'Sube los Excel para actualizar la base de datos en Neon.' },
+  { id: 'cargar', titulo: 'Actualizar datos', ic: 'subir', desc: 'Sube los Excel para actualizar la base de datos en Neon.', soloAdmin: true },
+  { id: 'usuarios', titulo: 'Usuarios y permisos', ic: 'gente', desc: 'Crea usuarios y elige qué páginas ve cada uno.', soloAdmin: true },
 ];
+// ¿Puede el usuario actual ver esta página?
+function permitida(p) {
+  const e = S.estado; if (!e) return p.id === 'inicio';
+  if (p.id === 'inicio') return true;
+  if (p.soloAdmin) return !!e.admin;
+  return (e.paginas || []).includes(p.id);
+}
 
 /* =====================================================================
    Navegación / render
    ===================================================================== */
 function pintarMenu() {
-  $('#menu').innerHTML = PAGINAS.map((p, i) => (p.id === 'cargar' ? '<div class="sep"></div>' : '') +
+  $('#menu').innerHTML = PAGINAS.filter(permitida).map((p, i) => (p.id === 'cargar' ? '<div class="sep"></div>' : '') +
     `<a href="#${p.id}" class="${S.pagina === p.id ? 'act' : ''}">${IC[p.ic]}${esc(p.titulo)}</a>` + (i === 0 ? '<div class="sep"></div>' : '')).join('');
 }
 
 function renderPagina() {
-  const p = PAGINAS.find(x => x.id === S.pagina) || PAGINAS[0];
+  let p = PAGINAS.find(x => x.id === S.pagina) || PAGINAS[0];
+  if (S.estado && !permitida(p)) { p = PAGINAS[0]; S.pagina = 'inicio'; if (location.hash && location.hash !== '#inicio') history.replaceState(null, '', '#inicio'); }
   $('#titulo').textContent = p.titulo; document.title = p.titulo + ' · Maestro Proveedores';
   pintarMenu(); $('#nav').classList.remove('abierto'); S.abierto = null;
   const c = $('#contenido');
   if (p.id === 'inicio') return pintarInicio(c);
   if (p.id === 'cargar') return pintarCargar(c);
+  if (p.id === 'usuarios') return pintarUsuarios(c);
   if (!S.datos) return;
   if (!S.filtros[p.id] && p.defaultsDin) S.filtros[p.id] = p.defaultsDin(S.datos);
   c.innerHTML = `<div class="slicers" id="slicers"></div><div id="cuerpo"></div>`;
@@ -844,16 +865,17 @@ function pintarInicio(c) {
   const pagAnio = d ? suma(d.pagos.filter(r => anio(r.fecha_pago) === y), r => r.monto) : 0;
   const conPdf = d ? d.compras.filter(r => r.foto).length : 0;
   const u = S.estado && S.estado.ultima;
-  c.innerHTML = `<div class="hero"><img src="logo.png" alt="MONFRUT"><div><h1>Maestro de Proveedores</h1>
-      <p>Facturas digitalizadas, pagos, documentos por pagar y proyecciones. Datos en Neon.</p>
+  c.innerHTML = `<div class="hero"><img src="logo.png" alt="MONFRUT"><div><h1>Hola${S.estado && S.estado.nombre ? ', ' + esc(S.estado.nombre) : ''}</h1>
+      <p>Maestro de Proveedores · Facturas digitalizadas, pagos, documentos por pagar y proyecciones. Datos en Neon.</p>
       <p style="margin-top:6px"><b>Última actualización:</b> ${u ? new Date(u.fecha).toLocaleString('es-CL', {dateStyle:'long', timeStyle:'short'}) : 'sin datos — ve a “Actualizar datos”'}</p></div></div>
-    ${d && d.compras.length ? kpis([
-      { l: 'Saldo por pagar', v: clp(saldo), s: 'Cuenta 2107101' },
-      { l: 'Vencido', v: clp(venc), c: 'rojo', s: 'al ' + fecha(hoy) },
-      { l: 'Pagado ' + y, v: clp(pagAnio), c: 'verde' },
-      { l: 'Facturas con PDF', v: pct(conPdf, d.compras.length), s: nf.format(d.compras.length - conPdf) + ' sin PDF' },
-    ]) : (d ? '<div class="aviso">La base de datos está vacía. Entra a <a href="#cargar">Actualizar datos</a> y sube los Excel de la carpeta MAESTRO PROVEEDORES.</div>' : '')}
-    <div class="tiles">${PAGINAS.filter(p => p.id !== 'inicio').map(p => `<a class="tile" href="#${p.id}"><div class="ic">${IC[p.ic]}</div><b>${esc(p.titulo)}</b><span>${esc(p.desc)}</span></a>`).join('')}</div>`;
+    ${(() => { if (!d) return ''; const pg = (S.estado && S.estado.paginas) || []; const k = [];
+      if (pg.includes('porpagar') && d.saldo.length) k.push({ l: 'Saldo por pagar', v: clp(saldo), s: 'Cuenta 2107101' }, { l: 'Vencido', v: clp(venc), c: 'rojo', s: 'al ' + fecha(hoy) });
+      if (pg.includes('pagos') && d.pagos.length) k.push({ l: 'Pagado ' + y, v: clp(pagAnio), c: 'verde' });
+      if (pg.includes('facturas') && d.compras.length) k.push({ l: 'Facturas con PDF', v: pct(conPdf, d.compras.length), s: nf.format(d.compras.length - conPdf) + ' sin PDF' });
+      if (k.length) return kpis(k);
+      if (S.estado.admin && !d.compras.length) return '<div class="aviso">La base de datos está vacía. Entra a <a href="#cargar">Actualizar datos</a> y sube los Excel de la carpeta MAESTRO PROVEEDORES.</div>';
+      return ''; })()}
+    <div class="tiles">${PAGINAS.filter(p => p.id !== 'inicio' && permitida(p)).map(p => `<a class="tile" href="#${p.id}"><div class="ic">${IC[p.ic]}</div><b>${esc(p.titulo)}</b><span>${esc(p.desc)}</span></a>`).join('')}</div>`;
 }
 
 /* =====================================================================
@@ -1019,6 +1041,66 @@ async function subir() {
 }
 
 /* =====================================================================
+   Usuarios y permisos (solo administradores)
+   ===================================================================== */
+const PAG_DATOS = PAGINAS.filter(p => p.src);
+async function pintarUsuarios(c) {
+  c.innerHTML = `<div class="grid g2">
+    <div id="listaU"><div class="cargando"><div class="spin"></div></div></div>
+    <div class="card"><div class="card-h"><h3 id="fTit">Nuevo usuario</h3><button class="btn" id="fNuevo">Limpiar</button></div>
+      <form id="fU" style="padding:14px;display:grid;gap:10px" autocomplete="off">
+        <label class="sl"><span class="lbl">Usuario (para entrar)</span><input class="inp" name="usuario" placeholder="ej: jperez" required></label>
+        <label class="sl"><span class="lbl">Nombre</span><input class="inp" name="nombre" placeholder="ej: Juan Pérez"></label>
+        <label class="sl"><span class="lbl" id="lblClave">Clave (mínimo 6 caracteres)</span><input class="inp" name="clave" type="text" placeholder="" autocomplete="new-password"></label>
+        <div class="sl"><span class="lbl">Páginas que puede ver</span>
+          <div class="permisos">${PAG_DATOS.map(p => `<label class="op"><input type="checkbox" name="pag" value="${p.id}"><span>${esc(p.titulo)}</span></label>`).join('')}</div>
+          <div style="display:flex;gap:10px;font-size:12px"><a href="#" id="pTodas">Marcar todas</a><a href="#" id="pNinguna">Ninguna</a></div></div>
+        <label class="op"><input type="checkbox" name="admin"><span><b>Administrador</b> — ve todo, sube Excel y administra usuarios</span></label>
+        <label class="op"><input type="checkbox" name="activo" checked><span><b>Activo</b> — desmarca para bloquear su acceso</span></label>
+        <div class="err" id="fErr"></div>
+        <div style="display:flex;gap:8px"><button class="btn prim" type="submit">Guardar usuario</button><button class="btn" type="button" id="fEliminar" style="margin-left:auto;color:var(--rojo)" hidden>Eliminar</button></div>
+        <p style="color:var(--txt2);margin:0;font-size:12px">Cada persona entra con su usuario y clave. Si alguien no tiene una página marcada, no la ve en el menú y el servidor tampoco le entrega esos datos. Ojo: “Documentos proyectos” y “Pagos por semana” también muestran montos pagados. Los cambios se aplican en un máximo de 2 minutos.</p>
+      </form></div></div>`;
+  const f = $('#fU');
+  const limpiar = () => { f.reset(); f.usuario.readOnly = false; $('#fTit').textContent = 'Nuevo usuario'; $('#lblClave').textContent = 'Clave (mínimo 6 caracteres)'; $('#fEliminar').hidden = true; $('#fErr').textContent = ''; };
+  $('#fNuevo').onclick = limpiar;
+  $('#pTodas').onclick = e => { e.preventDefault(); f.querySelectorAll('[name=pag]').forEach(x => x.checked = true); };
+  $('#pNinguna').onclick = e => { e.preventDefault(); f.querySelectorAll('[name=pag]').forEach(x => x.checked = false); };
+  let lista = [];
+  const cargar = async () => {
+    try { lista = (await api('/api/usuarios')).usuarios; } catch (e) { $('#listaU').innerHTML = `<div class="aviso">${esc(e.message)}</div>`; return; }
+    const tit = Object.fromEntries(PAG_DATOS.map(p => [p.id, p.titulo]));
+    $('#listaU').innerHTML = `<div class="card"><div class="card-h"><h3>Usuarios</h3><span class="cnt">${lista.length} usuarios</span></div><div class="card-b">
+      <table class="t"><thead><tr><th>Usuario</th><th>Nombre</th><th>Acceso</th><th>Estado</th></tr></thead><tbody>
+      ${lista.map(u => `<tr data-u="${esc(u.usuario)}" style="cursor:pointer"><td><b>${esc(u.usuario)}</b></td><td>${esc(u.nombre || '')}</td>
+        <td style="white-space:normal;max-width:380px">${u.admin ? '<b>Administrador (todo)</b>' : (u.paginas || []).map(p => esc(tit[p] || p)).join(', ') || '<span class="sinpdf">Sin páginas</span>'}</td>
+        <td>${u.activo ? '<span style="color:var(--verde-osc);font-weight:600">Activo</span>' : '<span style="color:var(--rojo);font-weight:600">Bloqueado</span>'}</td></tr>`).join('') || '<tr><td colspan="4" class="vacio">Aún no hay usuarios. Crea el primero con el formulario.</td></tr>'}
+      </tbody></table></div><div class="card-f"><span>Haz clic en un usuario para editarlo. El administrador principal entra con usuario <b>admin</b> y la clave ADMIN_PASSWORD de Vercel.</span></div></div>`;
+    $('#listaU').querySelectorAll('tr[data-u]').forEach(tr => tr.onclick = () => {
+      const u = lista.find(x => x.usuario === tr.dataset.u); limpiar();
+      f.usuario.value = u.usuario; f.usuario.readOnly = true; f.nombre.value = u.nombre || '';
+      f.querySelectorAll('[name=pag]').forEach(x => x.checked = (u.paginas || []).includes(x.value));
+      f.admin.checked = u.admin; f.activo.checked = u.activo;
+      $('#fTit').textContent = 'Editar: ' + u.usuario; $('#lblClave').textContent = 'Nueva clave (déjala vacía para no cambiarla)'; $('#fEliminar').hidden = false;
+    });
+  };
+  f.onsubmit = async e => {
+    e.preventDefault(); $('#fErr').textContent = '';
+    const body = { accion: 'guardar', usuario: f.usuario.value.trim().toLowerCase(), nombre: f.nombre.value.trim(), clave: f.clave.value,
+      paginas: [...f.querySelectorAll('[name=pag]:checked')].map(x => x.value), admin: f.admin.checked, activo: f.activo.checked };
+    try { await api('/api/usuarios', { method: 'POST', body: JSON.stringify(body) }); limpiar(); await cargar(); $('#fErr').innerHTML = '<span style="color:var(--verde-osc)">Usuario guardado.</span>'; }
+    catch (err) { $('#fErr').textContent = err.message; }
+  };
+  $('#fEliminar').onclick = async () => {
+    const u = f.usuario.value; const b = $('#fEliminar');
+    if (b.dataset.conf !== u) { b.dataset.conf = u; b.textContent = '¿Eliminar ' + u + '? Clic de nuevo'; return; }
+    try { await api('/api/usuarios', { method: 'POST', body: JSON.stringify({ accion: 'eliminar', usuario: u }) }); b.dataset.conf = ''; b.textContent = 'Eliminar'; limpiar(); await cargar(); }
+    catch (err) { $('#fErr').textContent = err.message; }
+  };
+  cargar();
+}
+
+/* =====================================================================
    Arranque
    ===================================================================== */
 async function entrar() {
@@ -1027,14 +1109,15 @@ async function entrar() {
   renderPagina();
   try { await cargarTodo(); renderPagina(); }
   catch (e) {
-    if (e.status === 401) { ss.del('clave'); $('#app').classList.add('oculto'); $('#login').classList.remove('oculto'); $('#loginErr').textContent = e.message; return; }
+    if (e.status === 401) { ss.del('clave'); S.estado = null; $('#app').classList.add('oculto'); $('#login').classList.remove('oculto'); $('#loginErr').textContent = e.message; return; }
     $('#contenido').innerHTML = `<div class="aviso"><b>No se pudo leer la base de datos.</b><br>${esc(e.message)}</div>`;
   }
 }
-$('#loginForm').onsubmit = e => { e.preventDefault(); S.clave = $('#clave').value; ss.set('clave', S.clave); $('#loginErr').textContent = ''; entrar(); };
+$('#loginForm').onsubmit = e => { e.preventDefault(); S.usuario = $('#usuario').value.trim(); S.clave = $('#clave').value; ss.set('usuario', S.usuario); ss.set('clave', S.clave); $('#loginErr').textContent = ''; entrar(); };
 window.addEventListener('hashchange', () => { S.pagina = (location.hash || '#inicio').slice(1); renderPagina(); window.scrollTo(0,0); });
 $('#menuBtn').onclick = e => { e.stopPropagation(); $('#nav').classList.toggle('abierto'); };
 $('#btnRecargar').onclick = async () => { try { await cargarTodo(); renderPagina(); } catch (e) { $('#contenido').innerHTML = `<div class="aviso">${esc(e.message)}</div>`; } };
+$('#btnSalir').onclick = () => { ss.del('clave'); ss.del('usuario'); location.hash = ''; location.reload(); };
 if (S.clave) entrar();
 </script>
 </body>

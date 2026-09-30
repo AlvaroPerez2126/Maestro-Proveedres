@@ -1,10 +1,12 @@
 import { PDFDocument } from 'pdf-lib';
 import { db, autorizar, json } from '../lib/db.js';
 import { asegurarEsquema } from '../lib/schema.js';
+import { estampar } from '../lib/timbre.js';
 
 // Documentos PDF de una factura del cruce (RUT + Folio + Tipo doc).
 //   clase = factura | oc      -> documento subido por el encargado
 //   clase = union             -> FACTURA + OC unidos en un solo PDF (se genera al pedirlo)
+//   La factura se entrega con su TIMBRE de recepción (si tiene); &original=1 la entrega sin timbre.
 // GET    /api/pdf?rut&folio&tipo&clase   -> descarga
 // POST   /api/pdf?rut&folio&tipo&clase   (cuerpo = PDF, header x-nombre) -> sube o reemplaza
 // DELETE /api/pdf?rut&folio&tipo&clase   -> elimina (quien lo subió o un administrador)
@@ -29,6 +31,12 @@ function enviarPdf(res, datos, nombre) {
   return res.end(datos);
 }
 
+async function conTimbre(pool, clave, datos) {
+  const t = await pool.query('SELECT pagina, x, y, ancho, campos FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
+  if (!t.rowCount) return datos;
+  try { return await estampar(datos, t.rows[0]); } catch (e) { return datos; }
+}
+
 export default async function handler(req, res) {
   try {
     const pool = db();
@@ -51,9 +59,10 @@ export default async function handler(req, res) {
       const f = r.rows.find(x => x.clase === 'factura'), o = r.rows.find(x => x.clase === 'oc');
       if (!f || !o) return json(res, 404, { error: `Falta ${!f ? 'la factura' : 'la orden de compra'} para generar la unión.` });
       const union = await PDFDocument.create();
-      for (const [doc, nom] of [[f, 'la factura'], [o, 'la orden de compra']]) {
+      const facturaTimbrada = await conTimbre(pool, clave, f.datos);
+      for (const [datos, nom] of [[facturaTimbrada, 'la factura'], [o.datos, 'la orden de compra']]) {
         let src;
-        try { src = await PDFDocument.load(doc.datos, { ignoreEncryption: true }); }
+        try { src = await PDFDocument.load(datos, { ignoreEncryption: true }); }
         catch (e) { return json(res, 422, { error: `No se pudo leer el PDF de ${nom} (puede estar protegido o dañado). Vuelve a subirlo.` }); }
         (await union.copyPages(src, src.getPageIndices())).forEach(p => union.addPage(p));
       }
@@ -67,7 +76,8 @@ export default async function handler(req, res) {
     if (req.method === 'GET') {
       const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
       if (!r.rowCount) return json(res, 404, { error: `No hay ${NOMBRE[clase]} para este documento.` });
-      return enviarPdf(res, r.rows[0].datos, r.rows[0].nombre || `${clase}_${folio}.pdf`);
+      const datos = clase === 'factura' && u.searchParams.get('original') !== '1' ? await conTimbre(pool, clave, r.rows[0].datos) : r.rows[0].datos;
+      return enviarPdf(res, datos, r.rows[0].nombre || `${clase}_${folio}.pdf`);
     }
 
     if (req.method === 'POST') {
@@ -89,6 +99,7 @@ export default async function handler(req, res) {
       if (!r.rowCount) return json(res, 200, { ok: true });
       if (!a.admin && r.rows[0].subido_por !== a.usuario) return json(res, 403, { error: `Solo ${r.rows[0].subido_por} o un administrador pueden eliminar este documento.` });
       await pool.query('DELETE FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
+      if (clase === 'factura') await pool.query('DELETE FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
       return json(res, 200, { ok: true });
     }
     return json(res, 405, { error: 'Método no permitido' });

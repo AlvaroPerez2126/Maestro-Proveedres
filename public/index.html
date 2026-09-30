@@ -189,6 +189,23 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .pdfb.ver{color:var(--rojo);border-color:#F5C2CB;background:var(--rojo-claro)}
 .pdfb.sub{color:var(--verde-osc);border-color:#CFE3C1;background:var(--verde-suave)}
 .pdfb.uni{color:#fff;background:var(--verde);border-color:var(--verde)}
+.pdfb.tim{color:#555;padding:2px 5px} .pdfb.tim.ok{color:#fff;background:#3B4BA8;border-color:#3B4BA8}
+.modal{position:fixed;inset:0;background:rgba(20,30,15,.55);z-index:90;display:flex;align-items:stretch;justify-content:center;padding:16px}
+.mbox{background:#fff;border-radius:12px;width:min(1000px,100%);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mhead{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--borde)}
+.mtit{display:flex;flex-direction:column} .mtit span{color:var(--txt2);font-size:12px}
+.mctl{display:flex;gap:6px;align-items:center;flex-wrap:wrap} .pgs{display:inline-flex;gap:4px;align-items:center}
+.tam{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--txt2)} .tam input{accent-color:var(--verde);width:90px}
+.mayuda{padding:7px 16px;background:var(--verde-suave);color:var(--txt2);font-size:12px;border-bottom:1px solid var(--borde)}
+.mbody{flex:1;overflow:auto;background:#E8ECE5;padding:16px;display:flex;justify-content:center;align-items:flex-start}
+.hoja{position:relative;box-shadow:0 2px 12px rgba(0,0,0,.18);background:#fff;line-height:0}
+.timbre{position:absolute;cursor:move;touch-action:none}
+.tin{position:absolute;left:0;top:0;width:300px;height:180px;transform-origin:0 0;line-height:normal;border:1.6px solid #4a4a4a;border-radius:7px;background:rgba(255,255,255,.72);font-family:Helvetica,Arial,sans-serif;color:#4a4a4a;box-shadow:0 0 0 2px rgba(59,75,168,.25)}
+.ttit{position:absolute;top:8px;left:0;right:0;text-align:center;font-weight:700;font-size:16px;letter-spacing:5px}
+.tfila{position:absolute;display:flex;align-items:flex-end;gap:3px;font-size:10.5px;height:16px}
+.tfila span{white-space:nowrap}
+.tfila input{flex:1;min-width:0;border:0;border-bottom:1.3px dotted #4a4a4a;background:transparent;color:#2133A0;font:11px Helvetica,Arial,sans-serif;padding:0 2px;height:15px;cursor:text}
+.tfila input:focus{outline:none;background:rgba(59,75,168,.08)}
 .falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
 .pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1F2A1A;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:.2s;z-index:100;pointer-events:none;max-width:90vw}
@@ -276,6 +293,7 @@ function semanaISO(d){ // 'YYYY-Www'
 }
 const primerLink = s => s ? String(s).split(/[,\s]+/).find(x => /^https?:\/\//.test(x)) : null;
 const ICO_PDF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+const ICO_TIMBRE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6v5l-1.5 4h-3L9 8z"/><path d="M4 16h16v3H4zM6 21h12"/></svg>';
 const pdfLink = u => { const l = primerLink(u); return l ? `<a class="pdf" href="${esc(l)}" target="_blank" rel="noopener">${ICO_PDF}PDF</a>` : '<span class="sinpdf">—</span>'; };
 const debounce = (f, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms); }; };
 const ss = { get(k){ try { return sessionStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { sessionStorage.setItem(k,v); } catch(e){} }, del(k){ try { sessionStorage.removeItem(k); } catch(e){} } };
@@ -646,7 +664,8 @@ function celdaPdf(r, clase = 'factura') {
   if (nom) {
     const puede = S.estado && (S.estado.admin || S.estado.usuario === por);
     const info = `${nom} · subido por ${por || '?'}${fch ? ' el ' + new Date(fch).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : ''}`;
-    return `<span class="pdfc"><button class="pdfb ver" data-acc="ver" ${k} title="${esc(info)}">${ICO_PDF}Ver</button>${puede ? `<button class="pdfb del" data-acc="del" ${k} title="Eliminar">✕</button>` : ''}</span>`;
+    const tim = clase === 'factura' ? `<button class="pdfb tim ${r.timbre_por ? 'ok' : ''}" data-acc="timbre" ${k} title="${r.timbre_por ? esc('Timbrada por ' + r.timbre_por + (r.timbre_fecha ? ' el ' + new Date(r.timbre_fecha).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : '') + ' · clic para editar') : 'Poner timbre de RECEPCION'}">${ICO_TIMBRE}${r.timbre_por ? '✓' : ''}</button>` : '';
+    return `<span class="pdfc"><button class="pdfb ver" data-acc="ver" ${k} title="${esc(info)}">${ICO_PDF}Ver</button>${tim}${puede ? `<button class="pdfb del" data-acc="del" ${k} title="Eliminar">✕</button>` : ''}</span>`;
   }
   const ext = clase === 'factura' ? primerLink(r.pdf) : null;
   return `<span class="pdfc">${ext ? `<a class="pdf" href="${esc(ext)}" target="_blank" rel="noopener" title="PDF en SharePoint">${ICO_PDF}PDF</a>` : ''}<button class="pdfb sub" data-acc="sub" ${k} title="Subir ${clase === 'oc' ? 'la orden de compra' : 'la factura'} (PDF)">⤒ Subir</button></span>`;
@@ -675,6 +694,7 @@ document.addEventListener('click', async e => {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) { if (w) w.close(); aviso(err.message, true); }
   }
+  if (b.dataset.acc === 'timbre') { if (fila) abrirTimbre(fila); return; }
   if (b.dataset.acc === 'bajar') {
     b.disabled = true;
     try {
@@ -691,7 +711,7 @@ document.addEventListener('click', async e => {
     try {
       const r = await fetch('/api/pdf?' + q, { method: 'DELETE', headers: hdr });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
-      if (fila) Object.assign(fila, esOC ? { oc_nombre: null, oc_por: null, oc_fecha: null } : { pdf_nombre: null, pdf_por: null, pdf_fecha: null });
+      if (fila) Object.assign(fila, esOC ? { oc_nombre: null, oc_por: null, oc_fecha: null } : { pdf_nombre: null, pdf_por: null, pdf_fecha: null, timbre_por: null, timbre_fecha: null });
       repintar(); aviso(esOC ? 'OC eliminada.' : 'Factura eliminada.');
     } catch (err) { aviso(err.message, true); }
   }
@@ -712,6 +732,101 @@ document.addEventListener('click', async e => {
     inp.click();
   }
 }, true);
+/* ---------- Timbre de RECEPCION (editor) ---------- */
+// Mismo diseño que lib/timbre.js (unidades 300 x 180)
+const TIMBRE_FILAS = [
+  { y: 50,  campos: [{ k: 'fecha', l: 'Fecha:' }] },
+  { y: 70,  campos: [{ k: 'bodega', l: 'Código Bodega:' }] },
+  { y: 90,  campos: [{ k: 'responsable', l: 'Responsable:' }] },
+  { y: 110, campos: [{ k: 'vb', l: 'V° B°:' }] },
+  { y: 130, campos: [{ k: 'digitado', l: 'Digitado COMPUAGRO:', hasta: 196 }, { k: 'fecha_dig', l: 'Fecha:', desde: 200 }] },
+  { y: 150, campos: [{ k: 'obs', l: 'Observaciones:' }] },
+  { y: 170, campos: [{ k: 'obs2', l: '' }] },
+];
+let _pdfjs;
+async function cargarPdfJs() {
+  if (_pdfjs) return _pdfjs;
+  await new Promise((ok, mal) => { const sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'; sc.onload = ok; sc.onerror = () => mal(new Error('No se pudo cargar el visor de PDF')); document.head.appendChild(sc); });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return (_pdfjs = window.pdfjsLib);
+}
+async function abrirTimbre(fila) {
+  const q = `rut=${encodeURIComponent(fila.rut)}&folio=${fila.folio}&tipo=${fila.tipo_doc ?? 0}`;
+  const hdr = { 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': encodeURIComponent(S.clave) };
+  const m = document.createElement('div'); m.className = 'modal';
+  m.innerHTML = `<div class="mbox"><div class="mhead">
+      <div class="mtit"><b>Timbre de recepción</b><span>${esc(fila.razon_social)} · Folio ${esc(fila.folio)}</span></div>
+      <div class="mctl"><span class="pgs"><button class="btn" data-a="ant">‹</button><span id="tPag">1 / 1</span><button class="btn" data-a="sig">›</button></span>
+        <label class="tam">Tamaño <input type="range" id="tTam" min="25" max="70" value="42"></label>
+        <button class="btn" data-a="quitar" hidden>Quitar timbre</button><button class="btn" data-a="cerrar">Cancelar</button><button class="btn prim" data-a="guardar">Guardar timbre</button></div></div>
+    <div class="mayuda">Arrastra el timbre desde su borde o título para ubicarlo y escribe directamente sobre él. El PDF original no se modifica.</div>
+    <div class="mbody"><div class="cargando"><div class="spin"></div><div>Abriendo factura…</div></div></div></div>`;
+  document.body.appendChild(m); document.body.style.overflow = 'hidden';
+  const cerrar = () => { m.remove(); document.body.style.overflow = ''; };
+  m.querySelector('[data-a=cerrar]').onclick = cerrar;
+  m.addEventListener('keydown', e => { if (e.key === 'Escape') cerrar(); });
+  let doc, pag = 0, t = { pagina: 0, x: 0.5, y: 0.04, ancho: 0.42, campos: {} };
+  try {
+    const [lib, rPdf, rT] = await Promise.all([cargarPdfJs(), fetch('/api/pdf?' + q + '&clase=factura&original=1', { headers: hdr }), fetch('/api/timbre?' + q, { headers: hdr })]);
+    if (!rPdf.ok) throw new Error((await rPdf.json().catch(() => ({}))).error || 'No se pudo abrir la factura');
+    const jt = await rT.json(); if (!rT.ok) throw new Error(jt.error);
+    if (jt.timbre) { t = { ...t, ...jt.timbre, campos: jt.timbre.campos || {} }; m.querySelector('[data-a=quitar]').hidden = !(S.estado.admin || S.estado.usuario === jt.timbre.timbrado_por); }
+    else { const h = new Date(); t.campos.fecha = `${String(h.getDate()).padStart(2,'0')}/${String(h.getMonth()+1).padStart(2,'0')}/${String(h.getFullYear()).slice(2)}`; }
+    doc = await lib.getDocument({ data: await rPdf.arrayBuffer() }).promise;
+    pag = Math.min(t.pagina || 0, doc.numPages - 1);
+  } catch (e) { m.querySelector('.mbody').innerHTML = `<div class="aviso">${esc(e.message)}</div>`; return; }
+  const body = m.querySelector('.mbody'); const tam = m.querySelector('#tTam'); tam.value = Math.round(t.ancho * 100);
+  body.innerHTML = `<div class="hoja"><canvas></canvas><div class="timbre"><div class="tin">
+      <div class="ttit">RECEPCION</div>
+      ${TIMBRE_FILAS.map(f => f.campos.map(c => `<div class="tfila" style="top:${f.y - 13}px;left:${c.desde ?? 10}px;width:${(c.hasta ?? 290) - (c.desde ?? 10)}px">${c.l ? `<span>${esc(c.l)}</span>` : ''}<input data-k="${c.k}" maxlength="120" value="${esc(t.campos[c.k] || '')}" autocomplete="off"></div>`).join('')).join('')}
+    </div></div></div>`;
+  const hoja = body.querySelector('.hoja'), cv = hoja.querySelector('canvas'), tb = hoja.querySelector('.timbre'), tin = tb.querySelector('.tin');
+  const ubicar = () => {
+    const W = cv.clientWidth, H = cv.clientHeight, s = t.ancho * W / 300;
+    t.x = Math.min(Math.max(0, t.x), Math.max(0, 1 - t.ancho)); t.y = Math.min(Math.max(0, t.y), Math.max(0, 1 - (180 * s) / H));
+    tb.style.left = t.x * W + 'px'; tb.style.top = t.y * H + 'px'; tb.style.width = 300 * s + 'px'; tb.style.height = 180 * s + 'px';
+    tin.style.transform = `scale(${s})`;
+  };
+  const pintarPag = async () => {
+    const p = await doc.getPage(pag + 1); const base = p.getViewport({ scale: 1 });
+    const ancho = Math.min(body.clientWidth - 32, 900); const vp = p.getViewport({ scale: ancho / base.width * (window.devicePixelRatio || 1) });
+    cv.width = vp.width; cv.height = vp.height; cv.style.width = ancho + 'px'; cv.style.height = (vp.height / (window.devicePixelRatio || 1)) + 'px';
+    await p.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+    m.querySelector('#tPag').textContent = `${pag + 1} / ${doc.numPages}`; ubicar();
+  };
+  m.querySelector('[data-a=ant]').onclick = () => { if (pag > 0) { pag--; pintarPag(); } };
+  m.querySelector('[data-a=sig]').onclick = () => { if (pag < doc.numPages - 1) { pag++; pintarPag(); } };
+  tam.oninput = () => { t.ancho = tam.value / 100; ubicar(); };
+  // arrastrar (desde borde o título, no desde los campos)
+  tb.addEventListener('pointerdown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    e.preventDefault(); tb.setPointerCapture(e.pointerId);
+    const W = cv.clientWidth, H = cv.clientHeight, x0 = e.clientX, y0 = e.clientY, tx = t.x, ty = t.y;
+    const mover = ev => { t.x = tx + (ev.clientX - x0) / W; t.y = ty + (ev.clientY - y0) / H; ubicar(); };
+    const soltar = () => { tb.removeEventListener('pointermove', mover); tb.removeEventListener('pointerup', soltar); };
+    tb.addEventListener('pointermove', mover); tb.addEventListener('pointerup', soltar);
+  });
+  window.addEventListener('resize', ubicar);
+  await pintarPag();
+  tin.querySelector('input[data-k=bodega]').focus();
+  m.querySelector('[data-a=guardar]').onclick = async () => {
+    const campos = {}; tin.querySelectorAll('input').forEach(i => campos[i.dataset.k] = i.value.trim());
+    try {
+      const r = await fetch('/api/timbre?' + q, { method: 'POST', headers: { ...hdr, 'Content-Type': 'application/json' }, body: JSON.stringify({ pagina: pag, x: t.x, y: t.y, ancho: t.ancho, campos }) });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      Object.assign(fila, { timbre_por: j.por, timbre_fecha: new Date().toISOString() });
+      cerrar(); const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) pintarCuerpo(p, fuente(p)); aviso('Timbre guardado. “Ver” ya muestra la factura timbrada.');
+    } catch (e) { aviso(e.message, true); }
+  };
+  m.querySelector('[data-a=quitar]').onclick = async e => {
+    const bq = e.currentTarget; if (bq.dataset.conf !== '1') { bq.dataset.conf = '1'; bq.textContent = '¿Quitar? clic de nuevo'; return; }
+    try {
+      const r = await fetch('/api/timbre?' + q, { method: 'DELETE', headers: hdr }); const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      Object.assign(fila, { timbre_por: null, timbre_fecha: null }); cerrar();
+      const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) pintarCuerpo(p, fuente(p)); aviso('Timbre quitado.');
+    } catch (err) { aviso(err.message, true); }
+  };
+}
 function aviso(txt, error) {
   let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.className = error ? 'err on' : 'on';
@@ -978,6 +1093,7 @@ const PAGINAS = [
       F.chips('enc', 'Encargado', r => r.encargado),
       F.chips('doc', 'Tipo doc.', r => r.doc),
       F.chips('docs', 'Documentos', estadoDocs),
+      F.chips('timbre', 'Timbre', r => !r.pdf_nombre ? 'Sin factura' : r.timbre_por ? 'Timbrada' : 'Sin timbre'),
     ],
     cuerpo(filas, el) {
       const pend = filas.filter(r => r.estado === 'Pendiente');

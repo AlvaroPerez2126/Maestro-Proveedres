@@ -1,0 +1,96 @@
+import { db, autorizar, json } from '../lib/db.js';
+import { asegurarEsquema } from '../lib/schema.js';
+
+// Caja chica / Fondos por rendir
+// GET  /api/rendiciones              -> lista (admin: todas; resto: las propias)
+// GET  /api/rendiciones?id=5         -> detalle con líneas y respaldos (sin el archivo)
+// POST /api/rendiciones {accion:'guardar', rendicion:{...}, lineas:[{id?,descripcion,...}]}  -> crea/actualiza
+// POST /api/rendiciones {accion:'estado', id, estado:'abierta'|'cerrada'}
+// POST /api/rendiciones {accion:'eliminar', id}
+const n = v => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
+const f = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null;
+const t = (v, max = 200) => v == null ? null : String(v).trim().slice(0, max) || null;
+
+export async function permiso(pool, a, id) {
+  const r = await pool.query('SELECT creado_por, estado FROM rendiciones WHERE id=$1', [id]);
+  if (!r.rowCount) return { ok: false, status: 404, msg: 'La rendición no existe.' };
+  if (!a.admin && r.rows[0].creado_por !== a.usuario) return { ok: false, status: 403, msg: 'Esta rendición es de otro usuario.' };
+  return { ok: true, estado: r.rows[0].estado };
+}
+
+async function detalle(pool, id) {
+  const c = await pool.query('SELECT * FROM rendiciones WHERE id=$1', [id]);
+  const l = await pool.query('SELECT * FROM rendicion_lineas WHERE rendicion_id=$1 ORDER BY orden, id', [id]);
+  const r = await pool.query(`SELECT r.id, r.linea_id, r.nombre, r.tipo, r.tam, r.subido_por, r.subido FROM rendicion_respaldos r
+                              JOIN rendicion_lineas l ON l.id = r.linea_id WHERE l.rendicion_id=$1 ORDER BY r.id`, [id]);
+  return { rendicion: c.rows[0], lineas: l.rows.map(x => ({ ...x, respaldos: r.rows.filter(y => y.linea_id === x.id) })) };
+}
+
+export default async function handler(req, res) {
+  try {
+    const pool = db();
+    await asegurarEsquema(pool);
+    const a = await autorizar(req);
+    if (!a.ok) return json(res, 401, { error: a.msg });
+    if (!a.admin && !a.paginas.includes('rendiciones')) return json(res, 403, { error: 'No tienes acceso a Caja chica / Rendiciones.' });
+    const u = new URL(req.url, 'http://x');
+
+    if (req.method === 'GET') {
+      const id = parseInt(u.searchParams.get('id') || '', 10);
+      if (id) { const p = await permiso(pool, a, id); if (!p.ok) return json(res, p.status, { error: p.msg }); return json(res, 200, await detalle(pool, id)); }
+      const r = await pool.query(`
+        SELECT c.id, c.numero, c.fecha, c.nombre, c.rut, c.monto_asignado, c.codigo, c.area, c.estado, c.creado_por, c.actualizado,
+               COALESCE(SUM(COALESCE(l.cantidad,1) * COALESCE(l.subtotal,0)), 0) AS total, COUNT(l.id)::int AS lineas,
+               (SELECT COUNT(*)::int FROM rendicion_respaldos r JOIN rendicion_lineas l2 ON l2.id = r.linea_id WHERE l2.rendicion_id = c.id) AS respaldos,
+               COUNT(l.id) FILTER (WHERE NOT EXISTS (SELECT 1 FROM rendicion_respaldos r WHERE r.linea_id = l.id))::int AS sin_respaldo
+        FROM rendiciones c LEFT JOIN rendicion_lineas l ON l.rendicion_id = c.id
+        WHERE $1 OR c.creado_por = $2 GROUP BY c.id ORDER BY c.numero DESC NULLS LAST, c.id DESC`, [!!a.admin, a.usuario]);
+      return json(res, 200, { rendiciones: r.rows });
+    }
+
+    const b = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    if (b.accion === 'guardar') {
+      const c = b.rendicion || {};
+      let id = parseInt(c.id, 10) || null;
+      if (id) { const p = await permiso(pool, a, id); if (!p.ok) return json(res, p.status, { error: p.msg }); if (p.estado === 'cerrada') return json(res, 400, { error: 'La rendición está cerrada. Reábrela para modificarla.' }); }
+      const cli = await pool.connect();
+      try {
+        await cli.query('BEGIN');
+        const vals = [c.numero ? parseInt(c.numero, 10) : null, f(c.fecha), t(c.nombre), t(c.rut, 20), n(c.monto_asignado), '9001', 'CM', t(c.girar_a), t(c.girar_rut, 20)];
+        if (id) {
+          await cli.query(`UPDATE rendiciones SET numero=$2, fecha=$3, nombre=$4, rut=$5, monto_asignado=$6, codigo=$7, area=$8, girar_a=$9, girar_rut=$10, actualizado=now() WHERE id=$1`, [id, ...vals]);
+        } else {
+          if (!vals[0]) vals[0] = (await cli.query('SELECT COALESCE(MAX(numero), 0) + 1 AS n FROM rendiciones')).rows[0].n;
+          id = (await cli.query(`INSERT INTO rendiciones (numero, fecha, nombre, rut, monto_asignado, codigo, area, girar_a, girar_rut, creado_por)
+                                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`, [...vals, a.usuario])).rows[0].id;
+        }
+        const guardadas = [];
+        for (const [i, l] of (Array.isArray(b.lineas) ? b.lineas : []).entries()) {
+          const lv = [i + 1, t(l.descripcion, 300), t(l.tipo_dcto, 40), f(l.fecha), n(l.cantidad ?? 1), n(l.subtotal)];
+          const lid = parseInt(l.id, 10);
+          if (lid) { await cli.query(`UPDATE rendicion_lineas SET orden=$3, descripcion=$4, tipo_dcto=$5, fecha=$6, cantidad=$7, subtotal=$8 WHERE id=$1 AND rendicion_id=$2`, [lid, id, ...lv]); guardadas.push(lid); }
+          else guardadas.push((await cli.query(`INSERT INTO rendicion_lineas (rendicion_id, orden, descripcion, tipo_dcto, fecha, cantidad, subtotal) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, [id, ...lv])).rows[0].id);
+        }
+        // líneas quitadas (y sus respaldos)
+        await cli.query('DELETE FROM rendicion_lineas WHERE rendicion_id=$1 AND NOT (id = ANY($2::int[]))', [id, guardadas]);
+        await cli.query('COMMIT');
+      } catch (e) { await cli.query('ROLLBACK'); throw e; } finally { cli.release(); }
+      return json(res, 200, await detalle(pool, id));
+    }
+    const id = parseInt(b.id, 10);
+    const p = await permiso(pool, a, id); if (!p.ok) return json(res, p.status, { error: p.msg });
+    if (b.accion === 'estado') {
+      const e = b.estado === 'cerrada' ? 'cerrada' : 'abierta';
+      await pool.query('UPDATE rendiciones SET estado=$2, actualizado=now() WHERE id=$1', [id, e]);
+      return json(res, 200, await detalle(pool, id));
+    }
+    if (b.accion === 'eliminar') {
+      if (p.estado === 'cerrada' && !a.admin) return json(res, 400, { error: 'La rendición está cerrada; solo un administrador puede eliminarla.' });
+      await pool.query('DELETE FROM rendiciones WHERE id=$1', [id]);
+      return json(res, 200, { ok: true });
+    }
+    return json(res, 400, { error: 'Acción desconocida' });
+  } catch (e) {
+    return json(res, 500, { error: e.message });
+  }
+}

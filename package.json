@@ -5,7 +5,10 @@
   "type": "module",
   "description": "Maestro de Proveedores MONFRUT - versión web del informe Power BI, con datos en Neon",
   "dependencies": {
+    "pdf-lib": "^1.17.1",
     "pg": "^8.13.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

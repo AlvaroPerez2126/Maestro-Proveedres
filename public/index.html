@@ -188,6 +188,8 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .pdfb svg{width:12px;height:12px}
 .pdfb.ver{color:var(--rojo);border-color:#F5C2CB;background:var(--rojo-claro)}
 .pdfb.sub{color:var(--verde-osc);border-color:#CFE3C1;background:var(--verde-suave)}
+.pdfb.uni{color:#fff;background:var(--verde);border-color:var(--verde)}
+.falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
 .pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1F2A1A;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:.2s;z-index:100;pointer-events:none;max-width:90vw}
 #toast.on{opacity:1;transform:translateX(-50%)} #toast.err{background:var(--rojo)}
@@ -492,9 +494,10 @@ function tabla(el, cfg) {
     const f = lista(); const np = Math.max(1, Math.ceil(f.length / TAM)); st.pag = Math.min(st.pag, np - 1);
     const vis = f.slice(st.pag * TAM, st.pag * TAM + TAM);
     const tot = cfg.cols.map(c => c.sum ? f.reduce((s,r) => s + (c.v(r) || 0), 0) : null);
-    body.innerHTML = `<table class="t"><thead><tr>${cfg.cols.map((c,i) => `<th data-i="${i}" class="${esNum(c) ? 'n' : ''}">${esc(c.t)}${st.orden === i ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
-      <tbody>${vis.map((r, ri) => `<tr${cfg.alClic ? ` data-ri="${ri}" class="clic"` : ''}>${cfg.cols.map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}"${c.max ? ` style="max-width:${c.max}px"` : ''} title="${c.f === 'pdf' || (c.html && !c.max) ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
-      ${tot.some(x => x != null) ? `<tfoot><tr>${cfg.cols.map((c,i) => `<td class="${esNum(c) ? 'n' : ''}">${i === 0 ? 'Total' : tot[i] != null ? FMT[c.f](tot[i]) : ''}</td>`).join('')}</tr></tfoot>` : ''}</table>`;
+    const vis_ = (c) => !c.soloCSV;
+    body.innerHTML = `<table class="t"><thead><tr>${cfg.cols.map((c,i) => !vis_(c) ? '' : `<th data-i="${i}" class="${esNum(c) ? 'n' : ''}">${esc(c.t)}${st.orden === i ? (st.dir > 0 ? ' ▲' : ' ▼') : ''}</th>`).join('')}</tr></thead>
+      <tbody>${vis.map((r, ri) => `<tr${cfg.alClic ? ` data-ri="${ri}" class="clic"` : ''}>${cfg.cols.filter(vis_).map(c => { const v = c.v(r); return `<td class="${esNum(c) ? 'n' : ''} ${esNum(c) && v < 0 ? 'neg' : ''}"${c.max ? ` style="max-width:${c.max}px"` : ''} title="${c.f === 'pdf' || (c.html && !c.max) ? '' : esc(c.f === 'fecha' ? fecha(v) : (esNum(c) ? '' : v ?? ''))}">${celda(c, r)}</td>`; }).join('')}</tr>`).join('') || `<tr><td colspan="${cfg.cols.filter(vis_).length}" class="vacio">Sin datos para los filtros elegidos</td></tr>`}</tbody>
+      ${tot.some(x => x != null) ? `<tfoot><tr>${cfg.cols.map((c,i) => !vis_(c) ? '' : `<td class="${esNum(c) ? 'n' : ''}">${i === 0 ? 'Total' : tot[i] != null ? FMT[c.f](tot[i]) : ''}</td>`).join('')}</tr></tfoot>` : ''}</table>`;
     if (cfg.alClic) body.querySelectorAll('tr[data-ri]').forEach(tr => tr.onclick = e => { if (e.target.closest('a')) return; cfg.alClic(vis[+tr.dataset.ri]); });
     body.querySelectorAll('th').forEach(th => th.onclick = () => { const i = +th.dataset.i; if (st.orden === i) st.dir *= -1; else { st.orden = i; st.dir = esNum(cfg.cols[i]) ? -1 : 1; } pintar(); });
     el.querySelector('.cnt').textContent = `${nf.format(f.length)} filas`;
@@ -626,29 +629,39 @@ function semaforo(n) {
 const COLS_CRUCE = () => [
   { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social, max: 190 }, { t: 'DOC', v: r => r.doc },
   { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
-  { t: 'Exento', v: r => r.monto_exento, f: 'clp', sum: true },
+  { t: 'Exento', v: r => r.monto_exento, f: 'clp', sum: true, soloCSV: true },
   { t: 'Neto', v: r => r.monto_neto, f: 'clp', sum: true, html: r => r.monto_neto > 1500000 ? `<b style="color:var(--rojo)">${clp(r.monto_neto)}</b>` : clp(r.monto_neto) },
-  { t: 'IVA', v: r => r.monto_iva, f: 'clp', sum: true },
+  { t: 'IVA', v: r => r.monto_iva, f: 'clp', sum: true, soloCSV: true },
   { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
   { t: 'Días atraso', v: r => r.dias_atraso, f: 'num', html: r => celdaAtraso(r.dias_atraso) },
-  { t: 'PDF', v: r => r.pdf_nombre || r.pdf, html: r => celdaPdf(r) },
+  { t: 'Factura', v: r => r.pdf_nombre || primerLink(r.pdf), html: r => celdaPdf(r, 'factura') },
+  { t: 'OC', v: r => r.oc_nombre, html: r => celdaPdf(r, 'oc') },
+  { t: 'Factura + OC', v: r => r.pdf_nombre && r.oc_nombre ? 'Sí' : '', html: r => celdaUnion(r) },
 ];
+const estadoDocs = r => r.pdf_nombre && r.oc_nombre ? 'Factura + OC' : r.pdf_nombre ? 'Solo factura' : r.oc_nombre ? 'Solo OC' : 'Sin documentos';
 // Celda PDF del cruce: ver / eliminar el PDF subido, o subir uno nuevo
-function celdaPdf(r) {
-  const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}"`;
-  if (r.pdf_nombre) {
-    const puede = S.estado && (S.estado.admin || S.estado.usuario === r.pdf_por);
-    const info = `${r.pdf_nombre} · subido por ${r.pdf_por || '?'}${r.pdf_fecha ? ' el ' + new Date(r.pdf_fecha).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : ''}`;
-    return `<span class="pdfc"><button class="pdfb ver" data-acc="ver" ${k} title="${esc(info)}">${ICO_PDF}Ver</button>${puede ? `<button class="pdfb del" data-acc="del" ${k} title="Eliminar PDF">✕</button>` : ''}</span>`;
+function celdaPdf(r, clase = 'factura') {
+  const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}" data-clase="${clase}"`;
+  const nom = clase === 'oc' ? r.oc_nombre : r.pdf_nombre, por = clase === 'oc' ? r.oc_por : r.pdf_por, fch = clase === 'oc' ? r.oc_fecha : r.pdf_fecha;
+  if (nom) {
+    const puede = S.estado && (S.estado.admin || S.estado.usuario === por);
+    const info = `${nom} · subido por ${por || '?'}${fch ? ' el ' + new Date(fch).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : ''}`;
+    return `<span class="pdfc"><button class="pdfb ver" data-acc="ver" ${k} title="${esc(info)}">${ICO_PDF}Ver</button>${puede ? `<button class="pdfb del" data-acc="del" ${k} title="Eliminar">✕</button>` : ''}</span>`;
   }
-  const ext = primerLink(r.pdf);
-  return `<span class="pdfc">${ext ? `<a class="pdf" href="${esc(ext)}" target="_blank" rel="noopener">${ICO_PDF}PDF</a>` : ''}<button class="pdfb sub" data-acc="sub" ${k} title="Subir el PDF de esta factura">⤒ Subir</button></span>`;
+  const ext = clase === 'factura' ? primerLink(r.pdf) : null;
+  return `<span class="pdfc">${ext ? `<a class="pdf" href="${esc(ext)}" target="_blank" rel="noopener" title="PDF en SharePoint">${ICO_PDF}PDF</a>` : ''}<button class="pdfb sub" data-acc="sub" ${k} title="Subir ${clase === 'oc' ? 'la orden de compra' : 'la factura'} (PDF)">⤒ Subir</button></span>`;
+}
+function celdaUnion(r) {
+  if (!(r.pdf_nombre && r.oc_nombre)) return `<span class="falta">Falta ${!r.pdf_nombre && !r.oc_nombre ? 'factura y OC' : !r.pdf_nombre ? 'factura' : 'OC'}</span>`;
+  const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}" data-clase="union"`;
+  return `<span class="pdfc"><button class="pdfb uni" data-acc="ver" ${k} title="Ver factura + OC en un solo PDF">${ICO_PDF}Ver</button><button class="pdfb" data-acc="bajar" ${k} title="Descargar factura + OC">⤓</button></span>`;
 }
 // Acciones de PDF (delegadas: funcionan aunque la tabla se vuelva a dibujar)
 document.addEventListener('click', async e => {
   const b = e.target.closest('.pdfb'); if (!b) return;
   e.preventDefault(); e.stopPropagation();
-  const q = `rut=${encodeURIComponent(b.dataset.rut)}&folio=${b.dataset.folio}&tipo=${b.dataset.tipo}`;
+  const clase = b.dataset.clase || 'factura', esOC = clase === 'oc';
+  const q = `rut=${encodeURIComponent(b.dataset.rut)}&folio=${b.dataset.folio}&tipo=${b.dataset.tipo}&clase=${clase}`;
   const fila = (S.datos.cruce || []).find(r => r.rut === b.dataset.rut && String(r.folio) === b.dataset.folio && String(r.tipo_doc ?? 0) === b.dataset.tipo);
   const hdr = { 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': encodeURIComponent(S.clave) };
   const repintar = () => { const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) pintarCuerpo(p, fuente(p)); };
@@ -662,13 +675,24 @@ document.addEventListener('click', async e => {
       setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) { if (w) w.close(); aviso(err.message, true); }
   }
+  if (b.dataset.acc === 'bajar') {
+    b.disabled = true;
+    try {
+      const r = await fetch('/api/pdf?' + q, { headers: hdr });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'No se pudo generar el PDF');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob());
+      a.download = decodeURIComponent(r.headers.get('x-nombre') || `FACTURA_OC_${b.dataset.folio}.pdf`); a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (err) { aviso(err.message, true); }
+    b.disabled = false;
+  }
   if (b.dataset.acc === 'del') {
     if (b.dataset.conf !== '1') { b.dataset.conf = '1'; b.textContent = '¿Eliminar?'; b.classList.add('conf'); setTimeout(() => { b.dataset.conf = ''; b.textContent = '✕'; b.classList.remove('conf'); }, 4000); return; }
     try {
       const r = await fetch('/api/pdf?' + q, { method: 'DELETE', headers: hdr });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
-      if (fila) Object.assign(fila, { pdf_nombre: null, pdf_por: null, pdf_fecha: null });
-      repintar(); aviso('PDF eliminado.');
+      if (fila) Object.assign(fila, esOC ? { oc_nombre: null, oc_por: null, oc_fecha: null } : { pdf_nombre: null, pdf_por: null, pdf_fecha: null });
+      repintar(); aviso(esOC ? 'OC eliminada.' : 'Factura eliminada.');
     } catch (err) { aviso(err.message, true); }
   }
   if (b.dataset.acc === 'sub') {
@@ -680,8 +704,9 @@ document.addEventListener('click', async e => {
       try {
         const r = await fetch('/api/pdf?' + q, { method: 'POST', body: f, headers: { ...hdr, 'Content-Type': 'application/octet-stream', 'x-nombre': encodeURIComponent(f.name) } });
         const j = await r.json(); if (!r.ok) throw new Error(j.error);
-        if (fila) Object.assign(fila, { pdf_nombre: j.nombre, pdf_por: j.por, pdf_fecha: new Date().toISOString() });
-        repintar(); aviso('PDF subido: ' + j.nombre);
+        const ahora = new Date().toISOString();
+        if (fila) Object.assign(fila, esOC ? { oc_nombre: j.nombre, oc_por: j.por, oc_fecha: ahora } : { pdf_nombre: j.nombre, pdf_por: j.por, pdf_fecha: ahora });
+        repintar(); aviso((esOC ? 'OC subida: ' : 'Factura subida: ') + j.nombre + (fila && fila.pdf_nombre && fila.oc_nombre ? ' · Factura + OC lista' : ''));
       } catch (err) { b.disabled = false; b.textContent = '⤒ Subir'; aviso(err.message, true); }
     };
     inp.click();
@@ -952,17 +977,17 @@ const PAGINAS = [
       F.chips('estado', 'Validación', r => r.estado),
       F.chips('enc', 'Encargado', r => r.encargado),
       F.chips('doc', 'Tipo doc.', r => r.doc),
-      F.chips('pdfc', 'PDF', r => (r.pdf_nombre || r.pdf) ? 'Con PDF' : 'Sin PDF'),
+      F.chips('docs', 'Documentos', estadoDocs),
     ],
     cuerpo(filas, el) {
       const pend = filas.filter(r => r.estado === 'Pendiente');
-      const conPdf = filas.filter(r => r.pdf_nombre || r.pdf).length;
+      const completos = filas.filter(r => r.pdf_nombre && r.oc_nombre).length;
       const mes = (S.datos.cruce[0] || {}).mes_cruce;
       el.innerHTML = kpis([
         { l: 'Faltantes', v: nf.format(pend.length), c: pend.length ? 'rojo' : 'verde', s: 'por ingresar en INET' },
         { l: 'Monto faltante', v: clp(suma(pend, r => r.monto_total)) },
         { l: 'Más atrasado', v: pend.length ? Math.min(...pend.map(r => r.dias_atraso)) + ' días' : '–' },
-        { l: 'PDF subidos', v: nf.format(conPdf) + ' / ' + nf.format(filas.length), s: 'Mes cruce: ' + esc(mes || '–'), c: conPdf === filas.length && filas.length ? 'verde' : '' },
+        { l: 'Factura + OC', v: nf.format(completos) + ' / ' + nf.format(filas.length), s: 'completos · mes cruce: ' + esc(mes || '–'), c: completos === filas.length && filas.length ? 'verde' : '' },
       ]) + '<div id="t1"></div>';
       tabla($('#t1'), { titulo: 'Documentos SII vs libro de compras', filas, orden: 9, dir: 1, alto: 620, cols: COLS_CRUCE() });
     } },
@@ -995,7 +1020,7 @@ const PAGINAS = [
         { t: 'Días crédito', v: r => r.credito, f: 'num' },
         { t: 'Vence crédito en', v: r => r.credito == null ? null : r.credito + r.dias_atraso, f: 'num',
           html: r => r.credito == null ? '' : (r.credito + r.dias_atraso < 0 ? `<b style="color:var(--rojo)">Vencido (${-(r.credito + r.dias_atraso)} d)</b>` : `${r.credito + r.dias_atraso} días`) },
-        { t: 'Encargado', v: r => r.encargado }, { t: 'PDF', v: r => r.pdf_nombre || r.pdf, html: r => celdaPdf(r) } ] });
+        { t: 'Encargado', v: r => r.encargado }, { t: 'Docs', v: r => estadoDocs(r) }, { t: 'Factura + OC', v: r => r.pdf_nombre && r.oc_nombre ? 'Sí' : '', html: r => celdaUnion(r) } ] });
     } },
 
   { id: 'rapido', grupo: 'Cruce de facturas', titulo: 'Entregar rápido', ic: 'rayo', desc: 'Faltantes con monto neto sobre $1.500.000.',

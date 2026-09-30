@@ -1,19 +1,32 @@
+import { PDFDocument } from 'pdf-lib';
 import { db, autorizar, json } from '../lib/db.js';
 import { asegurarEsquema } from '../lib/schema.js';
 
-// PDF de una factura del cruce, identificada por RUT + Folio + Tipo doc.
-// GET    /api/pdf?rut=..&folio=..&tipo=..   -> descarga el PDF
-// POST   /api/pdf?rut=..&folio=..&tipo=..   (cuerpo = el PDF, header x-nombre) -> sube o reemplaza
-// DELETE /api/pdf?rut=..&folio=..&tipo=..   -> elimina (quien lo subió o un administrador)
+// Documentos PDF de una factura del cruce (RUT + Folio + Tipo doc).
+//   clase = factura | oc      -> documento subido por el encargado
+//   clase = union             -> FACTURA + OC unidos en un solo PDF (se genera al pedirlo)
+// GET    /api/pdf?rut&folio&tipo&clase   -> descarga
+// POST   /api/pdf?rut&folio&tipo&clase   (cuerpo = PDF, header x-nombre) -> sube o reemplaza
+// DELETE /api/pdf?rut&folio&tipo&clase   -> elimina (quien lo subió o un administrador)
 export const config = { api: { bodyParser: false } };
-const MAX = 4 * 1024 * 1024; // 4 MB (límite de Vercel por solicitud: 4,5 MB)
+const MAX = 4 * 1024 * 1024; // 4 MB (Vercel acepta hasta 4,5 MB por solicitud)
 const CRUCE = ['cruce', 'atrasos', 'rapido'];
+const NOMBRE = { factura: 'factura', oc: 'orden de compra' };
 
 async function leerCuerpo(req) {
   if (Buffer.isBuffer(req.body)) return req.body;
   const partes = []; let n = 0;
   for await (const c of req) { n += c.length; if (n > MAX + 1024) throw Object.assign(new Error('El PDF supera 4 MB.'), { status: 413 }); partes.push(c); }
   return Buffer.concat(partes);
+}
+
+function enviarPdf(res, datos, nombre) {
+  res.statusCode = 200;
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Disposition', `inline; filename*=UTF-8''${encodeURIComponent(nombre)}`);
+  res.setHeader('x-nombre', encodeURIComponent(nombre));
+  return res.end(datos);
 }
 
 export default async function handler(req, res) {
@@ -28,38 +41,54 @@ export default async function handler(req, res) {
     const rut = (u.searchParams.get('rut') || '').trim();
     const folio = parseInt(u.searchParams.get('folio') || '', 10);
     const tipo = parseInt(u.searchParams.get('tipo') || '0', 10) || 0;
+    const clase = (u.searchParams.get('clase') || 'factura').toLowerCase();
     if (!rut || !Number.isFinite(folio)) return json(res, 400, { error: 'Falta RUT o folio.' });
+    if (!['factura', 'oc', 'union'].includes(clase)) return json(res, 400, { error: 'Tipo de documento inválido.' });
     const clave = [rut, folio, tipo];
 
+    if (req.method === 'GET' && clase === 'union') {
+      const r = await pool.query(`SELECT clase, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase IN ('factura','oc')`, clave);
+      const f = r.rows.find(x => x.clase === 'factura'), o = r.rows.find(x => x.clase === 'oc');
+      if (!f || !o) return json(res, 404, { error: `Falta ${!f ? 'la factura' : 'la orden de compra'} para generar la unión.` });
+      const union = await PDFDocument.create();
+      for (const [doc, nom] of [[f, 'la factura'], [o, 'la orden de compra']]) {
+        let src;
+        try { src = await PDFDocument.load(doc.datos, { ignoreEncryption: true }); }
+        catch (e) { return json(res, 422, { error: `No se pudo leer el PDF de ${nom} (puede estar protegido o dañado). Vuelve a subirlo.` }); }
+        (await union.copyPages(src, src.getPageIndices())).forEach(p => union.addPage(p));
+      }
+      union.setTitle(`Factura ${folio} + OC`);
+      return enviarPdf(res, Buffer.from(await union.save()), `FACTURA_OC_${folio}.pdf`);
+    }
+
+    if (clase === 'union') return json(res, 400, { error: 'La unión se genera sola; sube la factura y la OC por separado.' });
+    const k = [...clave, clase];
+
     if (req.method === 'GET') {
-      const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
-      if (!r.rowCount) return json(res, 404, { error: 'No hay PDF para este documento.' });
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(r.rows[0].nombre || `factura_${folio}.pdf`)}"`);
-      return res.end(r.rows[0].datos);
+      const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
+      if (!r.rowCount) return json(res, 404, { error: `No hay ${NOMBRE[clase]} para este documento.` });
+      return enviarPdf(res, r.rows[0].datos, r.rows[0].nombre || `${clase}_${folio}.pdf`);
     }
 
     if (req.method === 'POST') {
       const datos = await leerCuerpo(req);
       if (!datos.length) return json(res, 400, { error: 'El archivo está vacío.' });
       if (datos.length > MAX) return json(res, 413, { error: 'El PDF supera 4 MB. Redúcelo o escanéalo con menor resolución.' });
-      if (datos.subarray(0, 5).toString('latin1') !== '%PDF-') return json(res, 400, { error: 'El archivo no es un PDF válido.' });
+      if (datos.subarray(0, 1024).toString('latin1').indexOf('%PDF-') < 0) return json(res, 400, { error: 'El archivo no es un PDF válido.' });
       let nombre = ''; try { nombre = decodeURIComponent(req.headers['x-nombre'] || ''); } catch (e) {}
-      nombre = (nombre || `factura_${folio}.pdf`).replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
+      nombre = (nombre || `${clase}_${folio}.pdf`).replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
       await pool.query(
-        `INSERT INTO cruce_pdfs (rut, folio, tipo_doc, nombre, tam, datos, subido_por, subido) VALUES ($1,$2,$3,$4,$5,$6,$7, now())
-         ON CONFLICT (rut, folio, tipo_doc) DO UPDATE SET nombre=EXCLUDED.nombre, tam=EXCLUDED.tam, datos=EXCLUDED.datos, subido_por=EXCLUDED.subido_por, subido=now()`,
-        [...clave, nombre, datos.length, datos, a.usuario]);
+        `INSERT INTO cruce_pdfs (rut, folio, tipo_doc, clase, nombre, tam, datos, subido_por, subido) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
+         ON CONFLICT (rut, folio, tipo_doc, clase) DO UPDATE SET nombre=EXCLUDED.nombre, tam=EXCLUDED.tam, datos=EXCLUDED.datos, subido_por=EXCLUDED.subido_por, subido=now()`,
+        [...k, nombre, datos.length, datos, a.usuario]);
       return json(res, 200, { ok: true, nombre, tam: datos.length, por: a.usuario });
     }
 
     if (req.method === 'DELETE') {
-      const r = await pool.query('SELECT subido_por FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
+      const r = await pool.query('SELECT subido_por FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
       if (!r.rowCount) return json(res, 200, { ok: true });
-      if (!a.admin && r.rows[0].subido_por !== a.usuario) return json(res, 403, { error: `Solo ${r.rows[0].subido_por} o un administrador pueden eliminar este PDF.` });
-      await pool.query('DELETE FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
+      if (!a.admin && r.rows[0].subido_por !== a.usuario) return json(res, 403, { error: `Solo ${r.rows[0].subido_por} o un administrador pueden eliminar este documento.` });
+      await pool.query('DELETE FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
       return json(res, 200, { ok: true });
     }
     return json(res, 405, { error: 'Método no permitido' });

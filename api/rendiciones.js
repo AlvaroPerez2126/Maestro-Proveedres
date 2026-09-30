@@ -7,6 +7,9 @@ import { asegurarEsquema } from '../lib/schema.js';
 // POST /api/rendiciones {accion:'guardar', rendicion:{...}, lineas:[{id?,descripcion,...}]}  -> crea/actualiza
 // POST /api/rendiciones {accion:'estado', id, estado:'abierta'|'cerrada'}
 // POST /api/rendiciones {accion:'eliminar', id}
+// POST /api/rendiciones {accion:'firmar', id, rol}  |  {accion:'quitar_firma', id, rol}
+// GET  /api/rendiciones?firma=ID&rol=confeccionado  -> PNG de la firma puesta
+export const ROLES = ['confeccionado', 'revisado', 'aprobado'];
 const n = v => { const x = Number(v); return Number.isFinite(x) ? x : 0; };
 const f = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null;
 const t = (v, max = 200) => v == null ? null : String(v).trim().slice(0, max) || null;
@@ -23,7 +26,8 @@ async function detalle(pool, id) {
   const l = await pool.query('SELECT * FROM rendicion_lineas WHERE rendicion_id=$1 ORDER BY orden, id', [id]);
   const r = await pool.query(`SELECT r.id, r.linea_id, r.nombre, r.tipo, r.tam, r.subido_por, r.subido FROM rendicion_respaldos r
                               JOIN rendicion_lineas l ON l.id = r.linea_id WHERE l.rendicion_id=$1 ORDER BY r.id`, [id]);
-  return { rendicion: c.rows[0], lineas: l.rows.map(x => ({ ...x, respaldos: r.rows.filter(y => y.linea_id === x.id) })) };
+  const fi = await pool.query('SELECT rol, usuario, nombre, firmado FROM rendicion_firmas WHERE rendicion_id=$1', [id]);
+  return { rendicion: c.rows[0], lineas: l.rows.map(x => ({ ...x, respaldos: r.rows.filter(y => y.linea_id === x.id) })), firmas: fi.rows };
 }
 
 export default async function handler(req, res) {
@@ -35,6 +39,14 @@ export default async function handler(req, res) {
     if (!a.admin && !a.paginas.includes('rendiciones')) return json(res, 403, { error: 'No tienes acceso a Caja chica / Rendiciones.' });
     const u = new URL(req.url, 'http://x');
 
+    if (req.method === 'GET' && u.searchParams.get('firma')) {
+      const id = parseInt(u.searchParams.get('firma'), 10);
+      const p = await permiso(pool, a, id); if (!p.ok) return json(res, p.status, { error: p.msg });
+      const r = await pool.query('SELECT imagen FROM rendicion_firmas WHERE rendicion_id=$1 AND rol=$2', [id, u.searchParams.get('rol')]);
+      if (!r.rowCount) return json(res, 404, { error: 'Sin firma' });
+      res.statusCode = 200; res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'no-store');
+      return res.end(r.rows[0].imagen);
+    }
     if (req.method === 'GET') {
       const id = parseInt(u.searchParams.get('id') || '', 10);
       if (id) { const p = await permiso(pool, a, id); if (!p.ok) return json(res, p.status, { error: p.msg }); return json(res, 200, await detalle(pool, id)); }
@@ -82,6 +94,21 @@ export default async function handler(req, res) {
     if (b.accion === 'estado') {
       const e = b.estado === 'cerrada' ? 'cerrada' : 'abierta';
       await pool.query('UPDATE rendiciones SET estado=$2, actualizado=now() WHERE id=$1', [id, e]);
+      return json(res, 200, await detalle(pool, id));
+    }
+    if (b.accion === 'firmar' || b.accion === 'quitar_firma') {
+      if (!ROLES.includes(b.rol)) return json(res, 400, { error: 'Firma inválida.' });
+      if (b.accion === 'firmar') {
+        const f = await pool.query('SELECT imagen FROM firmas WHERE usuario=$1', [a.usuario]);
+        if (!f.rowCount) return json(res, 400, { error: 'Primero carga tu firma en "Mi firma".' });
+        await pool.query(`INSERT INTO rendicion_firmas (rendicion_id, rol, usuario, nombre, imagen) VALUES ($1,$2,$3,$4,$5)
+          ON CONFLICT (rendicion_id, rol) DO UPDATE SET usuario=EXCLUDED.usuario, nombre=EXCLUDED.nombre, imagen=EXCLUDED.imagen, firmado=now()`,
+          [id, b.rol, a.usuario, a.nombre, f.rows[0].imagen]);
+      } else {
+        const f = await pool.query('SELECT usuario FROM rendicion_firmas WHERE rendicion_id=$1 AND rol=$2', [id, b.rol]);
+        if (f.rowCount && !a.admin && f.rows[0].usuario !== a.usuario) return json(res, 403, { error: 'Solo quien firmó o un administrador puede quitar esta firma.' });
+        await pool.query('DELETE FROM rendicion_firmas WHERE rendicion_id=$1 AND rol=$2', [id, b.rol]);
+      }
       return json(res, 200, await detalle(pool, id));
     }
     if (b.accion === 'eliminar') {

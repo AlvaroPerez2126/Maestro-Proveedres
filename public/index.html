@@ -238,7 +238,7 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .rtabla th{border:1px solid #333;padding:4px 6px;font-size:11px;background:#fff}
 .rtabla td{border-left:1px solid #333;border-right:1px solid #333;padding:2px 4px;vertical-align:middle}
 .rtabla tbody tr:last-child td{border-bottom:1px solid #333}
-.rtabla td.c{text-align:center;width:44px} .rtabla td.n,.rtabla input.n{text-align:right} .rtabla td.tot{width:90px;font-weight:600;padding-right:8px}
+.rtabla td.c{text-align:center;width:44px} .rtabla td.n,.rtabla input.n{text-align:right} .rtabla td.tot{width:110px;white-space:nowrap;font-weight:600;padding-right:8px}
 .rtabla input{border:0;border-bottom:1px dashed #D5DAD0;width:100%;padding:5px 4px;background:transparent;font-size:12px}
 .rtabla input:focus{outline:none;background:var(--verde-suave);border-bottom-color:var(--verde)}
 .rtabla td:nth-child(2){min-width:220px} .rtabla td:nth-child(3){width:100px} .rtabla td:nth-child(4){width:130px} .rtabla td:nth-child(5){width:70px} .rtabla td:nth-child(6){width:110px}
@@ -254,6 +254,16 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .rgirar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:14px 18px 18px;border-top:1px solid var(--borde);font-size:12px;font-weight:700}
 .rgirar input{border:0;border-bottom:1px solid #999;padding:4px;font-weight:700;min-width:220px} .rgirar input::placeholder{color:var(--txt);opacity:1} .rgirar input.rutc{min-width:110px}
 @media (max-width:820px){ .rhead{grid-template-columns:1fr 1fr;grid-template-areas:"emp fec" "tit tit" "ama amb" "mon mon" "nom nom"} .rtit{grid-template-columns:1fr 60px 80px} .rmonto{grid-column:1/-1;width:100%} .rnom{grid-template-columns:auto 1fr;} .rnom input{border-right:0} }
+.rfirmas{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;padding:18px 18px 6px}
+.rfirma{text-align:center} .rfirma .fimg{height:70px;display:flex;align-items:flex-end;justify-content:center}
+.rfirma .fimg img{max-height:66px;max-width:100%} .rfirma .fimg .btn{font-size:12px;text-decoration:none;color:inherit}
+.rfirma .flin{border-top:1px solid #333;margin-top:2px} .rfirma .ftit{font-weight:700;font-size:12px;margin-top:3px}
+.rfirma .fquien{font-size:11px;color:var(--txt2)} .rfirma .fquien b{cursor:pointer;color:var(--rojo)}
+.fprev{min-height:110px;border:1px dashed var(--borde);border-radius:8px;display:flex;align-items:center;justify-content:center;
+  background:repeating-conic-gradient(#F3F5F1 0 25%,#fff 0 50%) 0 0/18px 18px}
+.fprev img{max-height:140px;max-width:100%}
+.fcanvas{width:100%;max-width:600px;aspect-ratio:600/220;border:1px solid var(--borde);border-radius:8px;background:#fff;touch-action:none;display:block;margin-bottom:8px}
+@media (max-width:820px){.rfirmas{grid-template-columns:1fr}}
 .cargando{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:80px 20px;color:var(--txt2)}
 .spin{width:28px;height:28px;border:3px solid var(--verde-claro);border-top-color:var(--verde);border-radius:50%;animation:g 1s linear infinite}
 @keyframes g{to{transform:rotate(360deg)}}
@@ -357,6 +367,7 @@ const IC = {
   cruce:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
   rayo:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9z"/></svg>',
   caja:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M12 11v3"/></svg>',
+  firma:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-6 5-9 7-9 2 0-1 8 1 8s3-4 5-4 1 3 3 3"/><path d="M3 21h18"/></svg>',
   flecha:'<svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
 
@@ -872,6 +883,69 @@ async function abrirTimbre(fila) {
     } catch (err) { aviso(err.message, true); }
   };
 }
+/* ---------- Mi firma ---------- */
+async function pintarMiFirma(c) {
+  c.innerHTML = `<div class="grid g2b">
+    <div class="card"><div class="card-h"><h3>Mi firma actual</h3></div><div style="padding:16px">
+      <div class="fprev" id="fActual"><span class="sinpdf">Cargando…</span></div>
+      <p style="color:var(--txt2);font-size:12.5px;margin:10px 0 0">Esta firma se usa al presionar <b>✍ Firmar</b> en una rendición. Al firmar se guarda una copia, así que cambiarla después no altera rendiciones ya firmadas.</p>
+      <button class="btn" id="fBorrar" hidden style="margin-top:10px;color:var(--rojo)">Borrar mi firma</button></div></div>
+    <div class="card"><div class="card-h"><h3>Cargar o dibujar firma</h3><div class="seg"><button class="on" data-m="foto">📷 Foto</button><button data-m="dib">✍ Dibujar</button></div></div>
+      <div style="padding:16px">
+        <div id="mFoto"><p style="margin:0 0 10px;color:var(--txt2);font-size:12.5px">Firma en una hoja blanca con lápiz azul o negro y sácale una foto (o sube un escaneo). El fondo blanco se quita solo.</p>
+          <input type="file" id="fArch" accept="image/*"> <label style="font-size:12px;color:var(--txt2);margin-left:8px">Limpieza <input type="range" id="fUmbral" min="120" max="230" value="185"></label></div>
+        <div id="mDib" hidden><p style="margin:0 0 10px;color:var(--txt2);font-size:12.5px">Firma con el mouse o con el dedo (en celular).</p>
+          <canvas id="fCanvas" width="600" height="220" class="fcanvas"></canvas><div><button class="btn" id="fLimpiar">Limpiar</button></div></div>
+        <div class="fprev" id="fNueva" style="margin-top:12px"><span class="sinpdf">Vista previa</span></div>
+        <button class="btn prim" id="fGuardar" disabled style="margin-top:12px">Guardar mi firma</button></div></div></div>`;
+  const cargarActual = async () => {
+    try { const r = await fetch('/api/firma?img=1&t=' + Date.now(), { headers: hdrs() });
+      if (r.ok) { $('#fActual').innerHTML = `<img src="${URL.createObjectURL(await r.blob())}" alt="Firma">`; $('#fBorrar').hidden = false; S.miFirma = true; }
+      else { $('#fActual').innerHTML = '<span class="sinpdf">Aún no has cargado tu firma.</span>'; $('#fBorrar').hidden = true; S.miFirma = false; } } catch (e) {}
+  };
+  cargarActual();
+  let pngBlob = null, bmp = null;
+  const listo = blob => { pngBlob = blob; $('#fGuardar').disabled = !blob; $('#fNueva').innerHTML = blob ? `<img src="${URL.createObjectURL(blob)}" alt="Vista previa">` : '<span class="sinpdf">Vista previa</span>'; };
+  // foto: quita el fondo claro y recorta
+  const procesar = async () => {
+    if (!bmp) return;
+    const k = Math.min(1, 1400 / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+    const ctx = cv.getContext('2d'); ctx.drawImage(bmp, 0, 0, cv.width, cv.height);
+    const im = ctx.getImageData(0, 0, cv.width, cv.height), px = im.data, U = +$('#fUmbral').value;
+    let x0 = cv.width, y0 = cv.height, x1 = 0, y1 = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      const lum = 0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2];
+      if (lum > U) { px[i + 3] = 0; continue; }
+      px[i + 3] = Math.min(255, Math.round((U - lum) / U * 255 * 2.2));
+      const p = i / 4, x = p % cv.width, y = (p / cv.width) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 <= x0) return listo(null);
+    ctx.putImageData(im, 0, 0);
+    const pad = 8, w = x1 - x0 + pad * 2, h = y1 - y0 + pad * 2, out = document.createElement('canvas');
+    const k2 = Math.min(1, 700 / w); out.width = Math.round(w * k2); out.height = Math.round(h * k2);
+    out.getContext('2d').drawImage(cv, x0 - pad, y0 - pad, w, h, 0, 0, out.width, out.height);
+    out.toBlob(listo, 'image/png');
+  };
+  $('#fArch').onchange = async e => { const f = e.target.files[0]; if (!f) return; bmp = await createImageBitmap(f, { imageOrientation: 'from-image' }).catch(() => null); if (!bmp) return aviso('No se pudo leer la imagen.', true); procesar(); };
+  $('#fUmbral').oninput = debounce(procesar, 150);
+  // dibujar
+  const cv = $('#fCanvas'), ctx = cv.getContext('2d'); let traz = false, hay = false;
+  ctx.lineWidth = 3.2; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1B2A8C';
+  const pto = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
+  cv.onpointerdown = e => { traz = true; hay = true; cv.setPointerCapture(e.pointerId); const [x, y] = pto(e); ctx.beginPath(); ctx.moveTo(x, y); };
+  cv.onpointermove = e => { if (!traz) return; const [x, y] = pto(e); ctx.lineTo(x, y); ctx.stroke(); };
+  cv.onpointerup = () => { traz = false; if (hay) cv.toBlob(listo, 'image/png'); };
+  $('#fLimpiar').onclick = () => { ctx.clearRect(0, 0, cv.width, cv.height); hay = false; listo(null); };
+  c.querySelectorAll('.seg button').forEach(b => b.onclick = () => { c.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+    $('#mFoto').hidden = b.dataset.m !== 'foto'; $('#mDib').hidden = b.dataset.m !== 'dib'; listo(null); });
+  $('#fGuardar').onclick = async () => {
+    try { const r = await fetch('/api/firma', { method: 'POST', body: pngBlob, headers: { ...hdrs(), 'Content-Type': 'application/octet-stream' } });
+      const j = await r.json(); if (!r.ok) throw new Error(j.error); aviso('Firma guardada.'); listo(null); cargarActual(); } catch (e) { aviso(e.message, true); }
+  };
+  $('#fBorrar').onclick = async e => { const b = e.currentTarget; if (b.dataset.conf !== '1') { b.dataset.conf = '1'; b.textContent = '¿Borrar? clic de nuevo'; return; }
+    await fetch('/api/firma', { method: 'DELETE', headers: hdrs() }); b.dataset.conf = ''; b.textContent = 'Borrar mi firma'; cargarActual(); };
+}
 function aviso(txt, error) {
   let t = $('#toast'); if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
   t.textContent = txt; t.className = error ? 'err on' : 'on';
@@ -1201,6 +1275,8 @@ const PAGINAS = [
   { id: 'rendiciones', grupo: 'Caja chica', titulo: 'Rendiciones', ic: 'caja', desc: 'Fondos por rendir y caja chica: líneas de gasto con su respaldo (foto o PDF) y PDF completo.',
     render: c => S.sub ? pintarRendicion(c, parseInt(S.sub, 10)) : pintarRendiciones(c) },
 
+  { id: 'firma', titulo: 'Mi firma', ic: 'firma', desc: 'Carga o dibuja tu firma para firmar rendiciones.', libre: true, render: c => pintarMiFirma(c) },
+
   { id: 'cargar', titulo: 'Actualizar datos', ic: 'subir', desc: 'Sube los Excel para actualizar la base de datos en Neon.', soloAdmin: true },
   { id: 'usuarios', titulo: 'Usuarios y permisos', ic: 'gente', desc: 'Crea usuarios y elige qué páginas ve cada uno.', soloAdmin: true },
 ];
@@ -1209,6 +1285,7 @@ function permitida(p) {
   const e = S.estado; if (!e) return p.id === 'inicio';
   if (p.id === 'inicio') return true;
   if (p.soloAdmin) return !!e.admin;
+  if (p.libre) return (e.paginas || []).includes('rendiciones') || !!e.admin;
   return (e.paginas || []).includes(p.id);
 }
 
@@ -1464,6 +1541,9 @@ const TIPOS_DCTO = ['BOLETA', 'FACTURA', 'RESPALDO', 'GUIA', 'VALE', 'OTRO'];
 const hdrs = () => ({ 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': encodeURIComponent(S.clave) });
 const hoy = () => hoyISO();
 // Igual que el Excel: Total = Cantidad × Subtotal ; en "Total a Girar" la cantidad es el N° de líneas con monto
+// Montos en formato peso: "$ 1.719.824" (se escribe solo el número)
+const peso = v => (v === '' || v == null || isNaN(+v) || +v === 0) ? '' : '$ ' + nf.format(Math.round(+v));
+function leerPeso(inp) { const d = inp.value.replace(/\D/g, ''); inp.value = d ? '$ ' + nf.format(+d) : ''; return d; }
 const totLinea = l => (l.cantidad === '' || l.cantidad == null ? 1 : +l.cantidad || 0) * (+l.subtotal || 0);
 
 async function pintarRendiciones(c) {
@@ -1510,8 +1590,8 @@ async function pintarRendicion(c, id) {
       <td><input ${ro} data-f="tipo_dcto" list="tiposDcto" value="${esc(l.tipo_dcto || '')}" placeholder="Tipo"></td>
       <td><input ${ro} data-f="fecha" type="date" value="${l.fecha || ''}"></td>
       <td><input ${ro} data-f="cantidad" type="number" min="0" step="1" class="n" value="${l.cantidad ?? 1}"></td>
-      <td><input ${ro} data-f="subtotal" type="number" min="0" step="1" class="n" value="${l.subtotal ? Math.round(l.subtotal) : ''}" placeholder="0"></td>
-      <td class="n tot">${nf.format(Math.round(totLinea(l)))}</td>
+      <td><input ${ro} data-f="subtotal" data-peso inputmode="numeric" class="n" value="${peso(l.subtotal)}" placeholder="$ 0"></td>
+      <td class="n tot">${peso(totLinea(l)) || '$ 0'}</td>
       <td class="resp">${(l.respaldos || []).map(r => `<span class="rchip" data-rid="${r.id}" title="${esc(r.nombre)} · ${esc(r.subido_por || '')}"><a data-a="ver">${r.tipo === 'pdf' ? '📄' : '🖼'} ${esc(r.nombre.length > 16 ? r.nombre.slice(0, 14) + '…' : r.nombre)}</a>${cerrada ? '' : '<b data-a="delr">✕</b>'}</span>`).join('')}
         ${cerrada ? '' : `<button class="pdfb sub" data-a="adj" title="Adjuntar foto o PDF">📎 Adjuntar</button><button class="pdfb sub cam" data-a="foto" title="Sacar foto con la cámara">📷</button>`}
         ${!(l.respaldos || []).length ? '<span class="sinresp">Sin respaldo</span>' : ''}</td>
@@ -1530,7 +1610,7 @@ async function pintarRendicion(c, id) {
         <div class="rfecha"><span>Fecha</span><input ${ro} data-c="fecha" type="date" value="${R.fecha || ''}"></div>
         <div class="rtit"><div class="t">FONDOS POR RENDIR</div><div class="no">Nº</div><input ${ro} data-c="numero" type="number" class="num" value="${R.numero ?? ''}"></div>
         <div class="ramar"><div class="fijo">${EMPRESA.codigo}</div></div>
-        <div class="rmonto"><span>MONTO ASIGNADO</span><input ${ro} data-c="monto_asignado" type="number" min="0" step="1" value="${R.monto_asignado ? Math.round(R.monto_asignado) : ''}" placeholder="0"></div>
+        <div class="rmonto"><span>MONTO ASIGNADO</span><input ${ro} data-c="monto_asignado" data-peso inputmode="numeric" value="${peso(R.monto_asignado)}" placeholder="$ 0"></div>
         <div class="ramar b"><div class="fijo">${EMPRESA.area}</div></div>
         <div class="rnom"><span>Nombre :</span><input ${ro} data-c="nombre" value="${esc(R.nombre || '')}"><span>Rut :</span><input ${ro} data-c="rut" value="${esc(R.rut || '')}" class="rutc"></div>
       </div>
@@ -1539,15 +1619,16 @@ async function pintarRendicion(c, id) {
         ${cerrada ? '' : '<button class="btn" id="rAdd">＋ Agregar línea</button>'}</div>
       <div class="rtot"><div></div><div class="lbl">Total a Girar</div><div class="n" id="rCant"></div><div class="n" id="rTotal"></div></div>
       <div class="rsaldo" id="rSaldo"></div>
+      <div class="rfirmas" id="rFirmas"></div>
       <div class="rgirar"><span>Girar Cheque a :</span><input ${ro} data-c="girar_a" value="${esc(R.girar_a || '')}" placeholder="${esc(R.nombre || 'Nombre')}"><input ${ro} data-c="girar_rut" class="rutc" value="${esc(R.girar_rut || '')}" placeholder="${esc(R.rut || 'Rut')}"></div>
     </div>`;
 
   const totales = () => {
     const cant = L.filter(l => +l.subtotal).length, tot = suma(L, totLinea), asig = +R.monto_asignado || 0;
-    $('#rCant').textContent = nf.format(cant); $('#rTotal').textContent = nf.format(Math.round(tot));
+    $('#rCant').textContent = nf.format(cant); $('#rTotal').textContent = '$ ' + nf.format(Math.round(tot));
     const sal = asig - tot;
     $('#rSaldo').innerHTML = `Monto asignado ${clp(asig)} · Rendido ${clp(tot)} · <b style="color:${sal < 0 ? 'var(--rojo)' : 'var(--verde-osc)'}">${sal < 0 ? 'Excedido ' + clp(-sal) : 'Saldo ' + clp(sal)}</b>`;
-    c.querySelectorAll('#rFilas tr').forEach((tr, i) => { const t = tr.querySelector('.tot'); if (t && L[i]) t.textContent = nf.format(Math.round(totLinea(L[i]))); });
+    c.querySelectorAll('#rFilas tr').forEach((tr, i) => { const t = tr.querySelector('.tot'); if (t && L[i]) t.textContent = peso(totLinea(L[i])) || '$ 0'; });
   };
   const estadoG = t => { const e = $('#rGuard'); if (e) e.textContent = t; };
   const guardar = async () => {
@@ -1569,7 +1650,7 @@ async function pintarRendicion(c, id) {
   const repintarFilas = () => { $('#rFilas').innerHTML = L.map(filaHTML).join(''); totales(); };
 
   c.querySelectorAll('[data-c]').forEach(inp => inp.addEventListener('input', () => {
-    R[inp.dataset.c] = inp.value; if (inp.dataset.c === 'monto_asignado') totales();
+    R[inp.dataset.c] = inp.hasAttribute('data-peso') ? leerPeso(inp) : inp.value; if (inp.dataset.c === 'monto_asignado') totales();
     // "Girar cheque a" toma el nombre y rut de arriba (como en el Excel) si no se escribe otro
     if (inp.dataset.c === 'nombre') c.querySelector('[data-c=girar_a]').placeholder = inp.value;
     if (inp.dataset.c === 'rut') c.querySelector('[data-c=girar_rut]').placeholder = inp.value;
@@ -1577,7 +1658,7 @@ async function pintarRendicion(c, id) {
   }));
   $('#rFilas').addEventListener('input', e => {
     const inp = e.target.closest('[data-f]'); if (!inp) return;
-    const l = L[+inp.closest('tr').dataset.i]; l[inp.dataset.f] = inp.value; totales(); autoguardar();
+    const l = L[+inp.closest('tr').dataset.i]; l[inp.dataset.f] = inp.hasAttribute('data-peso') ? leerPeso(inp) : inp.value; totales(); autoguardar();
   });
   $('#rAdd') && ($('#rAdd').onclick = () => {
     const prev = L[L.length - 1] || {};
@@ -1633,11 +1714,34 @@ async function pintarRendicion(c, id) {
   });
   $('#rPdf').onclick = async e => {
     const b = e.currentTarget; b.disabled = true; const txt = b.textContent; b.textContent = 'Generando PDF…';
-    try { await guardar(); await descargarRendicionPdf(R, L, m => b.textContent = m); } catch (err) { aviso(err.message, true); }
+    try { await guardar(); await descargarRendicionPdf(R, L, m => b.textContent = m, id, d.firmas || []); } catch (err) { aviso(err.message, true); }
     b.disabled = false; b.textContent = txt;
   };
+  // firmas
+  const pintarFirmas = async (firmas) => {
+    const box = $('#rFirmas'); if (!box) return;
+    let miFirma = S.miFirma; if (miFirma === undefined) { try { miFirma = S.miFirma = (await api('/api/firma')).tiene; } catch (e) { miFirma = false; } }
+    box.innerHTML = ROLES_FIRMA.map(([rol, tit]) => { const f = firmas.find(x => x.rol === rol);
+      const puedeQuitar = f && (S.estado.admin || S.estado.usuario === f.usuario);
+      return `<div class="rfirma" data-rol="${rol}"><div class="fimg">${f ? `<img alt="Firma" data-src="/api/rendiciones?firma=${id}&rol=${rol}">` : (miFirma
+          ? `<button class="btn" data-a="firmar">✍ Firmar como ${esc(S.estado.nombre || S.estado.usuario)}</button>`
+          : `<a class="btn" href="#firma">Carga tu firma para firmar</a>`)}</div>
+        <div class="flin"></div><div class="ftit">${tit}</div>
+        ${f ? `<div class="fquien">${esc(f.nombre || f.usuario)} · ${new Date(f.firmado).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'})}${puedeQuitar ? ' <b data-a="quitar" title="Quitar firma">✕</b>' : ''}</div>` : ''}</div>`; }).join('');
+    for (const im of box.querySelectorAll('img[data-src]')) { try { const r = await fetch(im.dataset.src, { headers: hdrs() }); if (r.ok) im.src = URL.createObjectURL(await r.blob()); } catch (e) {} }
+  };
+  $('#rFirmas').addEventListener('click', async e => {
+    const bt = e.target.closest('[data-a]'); if (!bt) return; const rol = bt.closest('.rfirma').dataset.rol;
+    try {
+      if (bt.dataset.a === 'firmar') await guardar();
+      const r = await api('/api/rendiciones', { method: 'POST', body: JSON.stringify({ accion: bt.dataset.a === 'firmar' ? 'firmar' : 'quitar_firma', id, rol }) });
+      d.firmas = r.firmas; pintarFirmas(r.firmas); aviso(bt.dataset.a === 'firmar' ? 'Rendición firmada.' : 'Firma quitada.');
+    } catch (err) { aviso(err.message, true); }
+  });
+  pintarFirmas(d.firmas || []);
   totales();
 }
+const ROLES_FIRMA = [['confeccionado', 'Confeccionado por'], ['revisado', 'Revisado por'], ['aprobado', 'Aprobado por']];
 
 // Fotos: se achican a máx. 2000 px y JPG (una foto de celular pasa de ~5 MB a ~400 KB)
 async function prepararArchivo(f) {
@@ -1662,13 +1766,14 @@ async function cargarPdfLib() {
 }
 
 // PDF completo: 1) formato FONDOS POR RENDIR  2) respaldos de cada línea, en orden
-async function descargarRendicionPdf(R, L, prog) {
+async function descargarRendicionPdf(R, L, prog, rid, firmas = []) {
   const { PDFDocument, StandardFonts, rgb } = await cargarPdfLib();
   const doc = await PDFDocument.create();
   const fn = await doc.embedFont(StandardFonts.Helvetica), fb = await doc.embedFont(StandardFonts.HelveticaBold);
   const lat = s => String(s ?? '').replace(/[“”]/g, '"').replace(/[‘’]/g, "'").replace(/[–—]/g, '-').replace(/[^\x20-\x7E\xA0-\xFF]/g, '');
   const NEG = rgb(0, 0, 0), GRIS = rgb(0.76, 0.76, 0.76), AMA = rgb(1, 1, 0.6), BL = rgb(1, 1, 1);
   const n0 = v => nf.format(Math.round(+v || 0));
+  const m0 = v => '$ ' + n0(v);
   const fch = d => d ? `${d.slice(8, 10)}-${d.slice(5, 7)}-${d.slice(0, 4)}` : '';
   const W = 595, H = 842;
   const txt = (pg, s, x, y, o = {}) => { const f = o.b ? fb : fn, z = o.z || 8; s = lat(s); let w = f.widthOfTextAtSize(s, z);
@@ -1676,7 +1781,7 @@ async function descargarRendicionPdf(R, L, prog) {
     const xx = o.al === 'r' ? x - w : o.al === 'c' ? x - w / 2 : x; pg.drawText(s, { x: xx, y, size: z, font: f, color: NEG }); };
   const caja = (pg, x, y, w, h, fill, bw = 0.8) => pg.drawRectangle({ x, y, width: w, height: h, color: fill, borderColor: NEG, borderWidth: bw });
   const lineas = L.filter(l => (l.descripcion || '').trim() || +l.subtotal);
-  const COLS = [[40, 'N° Rend'], [175, 'Descripcion Gasto'], [62, 'Tipo Dcto'], [52, 'Fecha'], [52, 'Cantidad'], [72, 'Subtotal'], [66, 'Total']];
+  const COLS = [[40, 'N° Rend'], [170, 'Descripcion Gasto'], [60, 'Tipo Dcto'], [52, 'Fecha'], [45, 'Cantidad'], [76, 'Subtotal'], [76, 'Total']];
   const X0 = 38, FILA = 17, POR_PAG = 30;
   const paginas = Math.max(1, Math.ceil(lineas.length / POR_PAG));
   for (let pi = 0; pi < paginas; pi++) {
@@ -1692,7 +1797,7 @@ async function descargarRendicionPdf(R, L, prog) {
     caja(pg, 416, H - 128, 64, 22, BL); txt(pg, String(R.numero ?? ''), 448, H - 121, { b: true, z: 15, al: 'c' });
     caja(pg, 500, H - 125, 70, 20, AMA); txt(pg, EMPRESA.codigo, 535, H - 119, { b: true, z: 12, al: 'c' });
     caja(pg, 338, H - 162, 78, 18, GRIS); txt(pg, 'MONTO ASIGNADO', 377, H - 156, { b: true, z: 6.5, al: 'c' });
-    caja(pg, 416, H - 162, 64, 18, BL); txt(pg, n0(R.monto_asignado), 477, H - 156, { b: true, z: 12, al: 'r' });
+    caja(pg, 416, H - 162, 64, 18, BL); txt(pg, m0(R.monto_asignado), 477, H - 156, { b: true, z: 11, al: 'r', max: 60 });
     caja(pg, 500, H - 158, 70, 18, AMA); txt(pg, EMPRESA.area, 535, H - 152, { b: true, z: 12, al: 'c' });
     caja(pg, 38, H - 176, 300, 12, GRIS); txt(pg, 'Nombre  :  ' + (R.nombre || ''), 41, H - 173, { b: true, z: 6.5, max: 290 });
     caja(pg, 338, H - 176, 142, 12, GRIS); txt(pg, 'Rut  :', 341, H - 173, { b: true, z: 6.5 }); txt(pg, R.rut || '', 395, H - 173, { b: true, z: 6.5 });
@@ -1704,24 +1809,36 @@ async function descargarRendicionPdf(R, L, prog) {
     const alto = nfilas * FILA + 6; x = X0;
     COLS.forEach(([w]) => { pg.drawRectangle({ x, y: y - alto, width: w, height: alto, borderColor: NEG, borderWidth: 0.8 }); x += w; });
     filas.forEach((l, k) => {
-      const yy = y - 14 - k * FILA; let xx = X0; const v = [String(pi * POR_PAG + k + 1), l.descripcion || '', l.tipo_dcto || '', fch(l.fecha), n0(l.cantidad), n0(l.subtotal), n0(totLinea(l))];
+      const yy = y - 14 - k * FILA; let xx = X0; const v = [String(pi * POR_PAG + k + 1), l.descripcion || '', l.tipo_dcto || '', fch(l.fecha), n0(l.cantidad), m0(l.subtotal), m0(totLinea(l))];
       COLS.forEach(([w], j) => { const al = j === 0 || j === 2 || j === 3 || j === 4 ? 'c' : j >= 5 ? 'r' : 'l';
         txt(pg, v[j], al === 'c' ? xx + w / 2 : al === 'r' ? xx + w - 4 : xx + 3, yy, { z: 7, al, max: w - 6 }); xx += w; });
     });
     if (pi === paginas - 1) {
       const yt = y - alto - 22, cant = lineas.filter(l => +l.subtotal).length, tot = suma(lineas, totLinea);
-      txt(pg, 'Total a Girar', 370, yt, { b: true, z: 9 });
-      pg.drawLine({ start: { x: 468, y: yt + 11 }, end: { x: X0 + 519, y: yt + 11 }, thickness: 1, color: NEG });
-      txt(pg, n0(cant), 505, yt, { b: true, z: 9, al: 'c' }); txt(pg, n0(tot), X0 + 515, yt, { b: true, z: 9, al: 'r' });
-      pg.drawLine({ start: { x: 468, y: yt - 4 }, end: { x: X0 + 519, y: yt - 4 }, thickness: 1, color: NEG });
-      pg.drawLine({ start: { x: 468, y: yt - 6.5 }, end: { x: X0 + 519, y: yt - 6.5 }, thickness: 1, color: NEG });
+      txt(pg, 'Total a Girar', X0 + 250, yt, { b: true, z: 9 });
+      pg.drawLine({ start: { x: X0 + 367, y: yt + 11 }, end: { x: X0 + 519, y: yt + 11 }, thickness: 1, color: NEG });
+      txt(pg, n0(cant), X0 + 405, yt, { b: true, z: 9, al: 'c' }); txt(pg, m0(tot), X0 + 515, yt, { b: true, z: 9, al: 'r' });
+      pg.drawLine({ start: { x: X0 + 367, y: yt - 4 }, end: { x: X0 + 519, y: yt - 4 }, thickness: 1, color: NEG });
+      pg.drawLine({ start: { x: X0 + 367, y: yt - 6.5 }, end: { x: X0 + 519, y: yt - 6.5 }, thickness: 1, color: NEG });
       const sal = (+R.monto_asignado || 0) - tot;
-      txt(pg, `Monto asignado ${n0(R.monto_asignado)}  ·  Rendido ${n0(tot)}  ·  ${sal < 0 ? 'Excedido' : 'Saldo'} ${n0(Math.abs(sal))}`, X0 + 519, yt - 20, { z: 7, al: 'r' });
+      txt(pg, `Monto asignado ${m0(R.monto_asignado)}  ·  Rendido ${m0(tot)}  ·  ${sal < 0 ? 'Excedido' : 'Saldo'} ${m0(Math.abs(sal))}`, X0 + 519, yt - 20, { z: 7, al: 'r' });
       const yf = Math.max(95, yt - 75);
       pg.drawLine({ start: { x: X0, y: yf }, end: { x: X0 + 245, y: yf }, thickness: 0.8, color: NEG }); txt(pg, 'Confeccionado  por', X0 + 122, yf - 9, { b: true, z: 7, al: 'c' });
       pg.drawLine({ start: { x: 440, y: yf }, end: { x: X0 + 519, y: yf }, thickness: 0.8, color: NEG }); txt(pg, 'Revisado  por', 500, yf - 9, { b: true, z: 7, al: 'c' });
       txt(pg, 'Girar  Cheque  a  :', X0, yf - 38, { b: true, z: 7 });
       txt(pg, R.girar_a || R.nombre || '', X0 + 50, yf - 56, { b: true, z: 7 }); txt(pg, R.girar_rut || R.rut || '', 365, yf - 56, { z: 7 });
+      // firmas: sobre "Confeccionado por", sobre "Revisado por" y "Aprobado por" junto a Girar cheque (como en el formato en papel)
+      const pos = { confeccionado: [X0 + 122, yf + 2, 150], revisado: [500, yf + 2, 110], aprobado: [480, yf - 70, 110] };
+      if (firmas.some(f => f.rol === 'aprobado')) { pg.drawLine({ start: { x: 425, y: yf - 72 }, end: { x: X0 + 519, y: yf - 72 }, thickness: 0.6, color: NEG }); txt(pg, 'Aprobado  por', 480, yf - 81, { b: true, z: 7, al: 'c' }); }
+      for (const f of firmas) {
+        try {
+          const r = await fetch(`/api/rendiciones?firma=${rid}&rol=${f.rol}`, { headers: hdrs() }); if (!r.ok) continue;
+          const img = await doc.embedPng(new Uint8Array(await r.arrayBuffer()));
+          const [cx, by, maxW] = pos[f.rol]; const k = Math.min(maxW / img.width, 46 / img.height);
+          pg.drawImage(img, { x: cx - img.width * k / 2, y: by, width: img.width * k, height: img.height * k });
+          txt(pg, `${f.nombre || f.usuario} · ${new Date(f.firmado).toLocaleDateString('es-CL')}`, cx, by - (f.rol === 'aprobado' ? 20 : 17), { z: 5.5, al: 'c' });
+        } catch (e) {}
+      }
     }
     if (paginas > 1) txt(pg, `Página ${pi + 1} de ${paginas}`, W - 30, 26, { z: 6.5, al: 'r' });
   }
@@ -1735,7 +1852,7 @@ async function descargarRendicionPdf(R, L, prog) {
       const resp = await fetch('/api/respaldo?id=' + r.id, { headers: hdrs() });
       if (!resp.ok) continue;
       const bytes = new Uint8Array(await resp.arrayBuffer());
-      const et = `Rendición N° ${R.numero ?? ''} · Línea ${i + 1}: ${l.descripcion || ''} · ${l.tipo_dcto || ''} · $${n0(totLinea(l))}`;
+      const et = `Rendición N° ${R.numero ?? ''} · Línea ${i + 1}: ${l.descripcion || ''} · ${l.tipo_dcto || ''} · ${m0(totLinea(l))}`;
       if (r.tipo === 'pdf') {
         try { const src = await PDFDocument.load(bytes, { ignoreEncryption: true });
           for (const p of await doc.copyPages(src, src.getPageIndices())) { doc.addPage(p); rot(p, et); } } catch (e) { continue; }
@@ -1758,7 +1875,7 @@ async function descargarRendicionPdf(R, L, prog) {
 /* =====================================================================
    Usuarios y permisos (solo administradores)
    ===================================================================== */
-const PAG_DATOS = PAGINAS.filter(p => p.src || p.render);
+const PAG_DATOS = PAGINAS.filter(p => (p.src || p.render) && !p.libre);
 async function pintarUsuarios(c) {
   c.innerHTML = `<div class="grid g2">
     <div id="listaU"><div class="cargando"><div class="spin"></div></div></div>

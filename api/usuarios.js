@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     if (!a.ok) return json(res, 401, { error: a.msg });
 
     if (req.method === 'GET') {
-      const r = await pool.query('SELECT usuario, nombre, paginas, admin, activo, creado FROM usuarios ORDER BY usuario');
+      const r = await pool.query('SELECT usuario, nombre, paginas, admin, activo, creado, empresas FROM usuarios ORDER BY usuario');
       return json(res, 200, { usuarios: r.rows });
     }
     const b = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
@@ -28,18 +28,19 @@ export default async function handler(req, res) {
     }
     if (b.accion === 'guardar') {
       const paginas = (Array.isArray(b.paginas) ? b.paginas : []).filter(p => PAGINAS[p]);
+      const empresas = Array.isArray(b.empresas) ? b.empresas.map(Number).filter(Number.isInteger) : null; // null = todas
       const existe = (await pool.query('SELECT 1 FROM usuarios WHERE usuario = $1', [usuario])).rowCount > 0;
       const clave = String(b.clave || '');
       if (!existe && clave.length < 6) return json(res, 400, { error: 'La clave debe tener al menos 6 caracteres.' });
       if (clave && clave.length < 6) return json(res, 400, { error: 'La clave debe tener al menos 6 caracteres.' });
       if (existe) {
         await pool.query(
-          `UPDATE usuarios SET nombre = $2, paginas = $3, admin = $4, activo = $5 ${clave ? ', clave_hash = $6' : ''} WHERE usuario = $1`,
-          clave ? [usuario, b.nombre || null, paginas, !!b.admin, b.activo !== false, hashClave(clave)]
-                : [usuario, b.nombre || null, paginas, !!b.admin, b.activo !== false]);
+          `UPDATE usuarios SET nombre = $2, paginas = $3, admin = $4, activo = $5, empresas = $6 ${clave ? ', clave_hash = $7' : ''} WHERE usuario = $1`,
+          clave ? [usuario, b.nombre || null, paginas, !!b.admin, b.activo !== false, empresas, hashClave(clave)]
+                : [usuario, b.nombre || null, paginas, !!b.admin, b.activo !== false, empresas]);
       } else {
-        await pool.query('INSERT INTO usuarios (usuario, nombre, clave_hash, paginas, admin, activo) VALUES ($1,$2,$3,$4,$5,$6)',
-          [usuario, b.nombre || null, hashClave(clave), paginas, !!b.admin, b.activo !== false]);
+        await pool.query('INSERT INTO usuarios (usuario, nombre, clave_hash, paginas, admin, activo, empresas) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+          [usuario, b.nombre || null, hashClave(clave), paginas, !!b.admin, b.activo !== false, empresas]);
       }
       limpiarCache();
       return json(res, 200, { ok: true });

@@ -1,5 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import { db, autorizar, json } from '../lib/db.js';
+import { db, autorizar, json, empresaActiva } from '../lib/db.js';
 import { asegurarEsquema } from '../lib/schema.js';
 import { estampar } from '../lib/timbre.js';
 
@@ -32,7 +32,7 @@ function enviarPdf(res, datos, nombre) {
 }
 
 async function conTimbre(pool, clave, datos) {
-  const t = await pool.query('SELECT pagina, x, y, ancho, campos FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
+  const t = await pool.query('SELECT pagina, x, y, ancho, campos FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4', clave);
   if (!t.rowCount) return datos;
   try { return await estampar(datos, t.rows[0]); } catch (e) { return datos; }
 }
@@ -52,10 +52,11 @@ export default async function handler(req, res) {
     const clase = (u.searchParams.get('clase') || 'factura').toLowerCase();
     if (!rut || !Number.isFinite(folio)) return json(res, 400, { error: 'Falta RUT o folio.' });
     if (!['factura', 'oc', 'union'].includes(clase)) return json(res, 400, { error: 'Tipo de documento inválido.' });
-    const clave = [rut, folio, tipo];
+    const emp = await empresaActiva(req, a);
+    const clave = [rut, folio, tipo, emp];
 
     if (req.method === 'GET' && clase === 'union') {
-      const r = await pool.query(`SELECT clase, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase IN ('factura','oc')`, clave);
+      const r = await pool.query(`SELECT clase, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase IN ('factura','oc')`, clave);
       const f = r.rows.find(x => x.clase === 'factura'), o = r.rows.find(x => x.clase === 'oc');
       if (!f || !o) return json(res, 404, { error: `Falta ${!f ? 'la factura' : 'la orden de compra'} para generar la unión.` });
       const union = await PDFDocument.create();
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
     const k = [...clave, clase];
 
     if (req.method === 'GET') {
-      const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
+      const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase=$5', k);
       if (!r.rowCount) return json(res, 404, { error: `No hay ${NOMBRE[clase]} para este documento.` });
       const datos = clase === 'factura' && u.searchParams.get('original') !== '1' ? await conTimbre(pool, clave, r.rows[0].datos) : r.rows[0].datos;
       return enviarPdf(res, datos, r.rows[0].nombre || `${clase}_${folio}.pdf`);
@@ -88,18 +89,18 @@ export default async function handler(req, res) {
       let nombre = ''; try { nombre = decodeURIComponent(req.headers['x-nombre'] || ''); } catch (e) {}
       nombre = (nombre || `${clase}_${folio}.pdf`).replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
       await pool.query(
-        `INSERT INTO cruce_pdfs (rut, folio, tipo_doc, clase, nombre, tam, datos, subido_por, subido) VALUES ($1,$2,$3,$4,$5,$6,$7,$8, now())
-         ON CONFLICT (rut, folio, tipo_doc, clase) DO UPDATE SET nombre=EXCLUDED.nombre, tam=EXCLUDED.tam, datos=EXCLUDED.datos, subido_por=EXCLUDED.subido_por, subido=now()`,
+        `INSERT INTO cruce_pdfs (rut, folio, tipo_doc, empresa, clase, nombre, tam, datos, subido_por, subido) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
+         ON CONFLICT (empresa, rut, folio, tipo_doc, clase) DO UPDATE SET nombre=EXCLUDED.nombre, tam=EXCLUDED.tam, datos=EXCLUDED.datos, subido_por=EXCLUDED.subido_por, subido=now()`,
         [...k, nombre, datos.length, datos, a.usuario]);
       return json(res, 200, { ok: true, nombre, tam: datos.length, por: a.usuario });
     }
 
     if (req.method === 'DELETE') {
-      const r = await pool.query('SELECT subido_por FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
+      const r = await pool.query('SELECT subido_por FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase=$5', k);
       if (!r.rowCount) return json(res, 200, { ok: true });
       if (!a.admin && r.rows[0].subido_por !== a.usuario) return json(res, 403, { error: `Solo ${r.rows[0].subido_por} o un administrador pueden eliminar este documento.` });
-      await pool.query('DELETE FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND clase=$4', k);
-      if (clase === 'factura') await pool.query('DELETE FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3', clave);
+      await pool.query('DELETE FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase=$5', k);
+      if (clase === 'factura') await pool.query('DELETE FROM cruce_timbres WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4', clave);
       return json(res, 200, { ok: true });
     }
     return json(res, 405, { error: 'Método no permitido' });

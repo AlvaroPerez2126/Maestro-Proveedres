@@ -1,4 +1,4 @@
-import { db, autorizar, json } from '../lib/db.js';
+import { db, autorizar, json, empresaActiva, empresasPermitidas } from '../lib/db.js';
 import { asegurarEsquema } from '../lib/schema.js';
 
 // Caja chica / Fondos por rendir
@@ -15,14 +15,15 @@ const f = v => /^\d{4}-\d{2}-\d{2}$/.test(v || '') ? v : null;
 const t = (v, max = 200) => v == null ? null : String(v).trim().slice(0, max) || null;
 
 export async function permiso(pool, a, id) {
-  const r = await pool.query('SELECT creado_por, estado FROM rendiciones WHERE id=$1', [id]);
+  const r = await pool.query('SELECT creado_por, estado, empresa FROM rendiciones WHERE id=$1', [id]);
   if (!r.rowCount) return { ok: false, status: 404, msg: 'La rendición no existe.' };
   if (!a.admin && r.rows[0].creado_por !== a.usuario) return { ok: false, status: 403, msg: 'Esta rendición es de otro usuario.' };
+  if (!(await empresasPermitidas(a)).some(e => e.id === r.rows[0].empresa)) return { ok: false, status: 403, msg: 'No tienes acceso a la empresa de esta rendición.' };
   return { ok: true, estado: r.rows[0].estado };
 }
 
 async function detalle(pool, id) {
-  const c = await pool.query('SELECT * FROM rendiciones WHERE id=$1', [id]);
+  const c = await pool.query(`SELECT r.*, e.nombre AS empresa_nombre, e.rut AS empresa_rut FROM rendiciones r LEFT JOIN empresas e ON e.id = r.empresa WHERE r.id=$1`, [id]);
   const l = await pool.query('SELECT * FROM rendicion_lineas WHERE rendicion_id=$1 ORDER BY orden, id', [id]);
   const r = await pool.query(`SELECT r.id, r.linea_id, r.nombre, r.tipo, r.tam, r.subido_por, r.subido FROM rendicion_respaldos r
                               JOIN rendicion_lineas l ON l.id = r.linea_id WHERE l.rendicion_id=$1 ORDER BY r.id`, [id]);
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
     if (!a.ok) return json(res, 401, { error: a.msg });
     if (!a.admin && !a.paginas.includes('rendiciones')) return json(res, 403, { error: 'No tienes acceso a Caja chica / Rendiciones.' });
     const u = new URL(req.url, 'http://x');
+    const emp = await empresaActiva(req, a);
 
     if (req.method === 'GET' && u.searchParams.get('firma')) {
       const id = parseInt(u.searchParams.get('firma'), 10);
@@ -56,7 +58,7 @@ export default async function handler(req, res) {
                (SELECT COUNT(*)::int FROM rendicion_respaldos r JOIN rendicion_lineas l2 ON l2.id = r.linea_id WHERE l2.rendicion_id = c.id) AS respaldos,
                COUNT(l.id) FILTER (WHERE NOT EXISTS (SELECT 1 FROM rendicion_respaldos r WHERE r.linea_id = l.id))::int AS sin_respaldo
         FROM rendiciones c LEFT JOIN rendicion_lineas l ON l.rendicion_id = c.id
-        WHERE $1 OR c.creado_por = $2 GROUP BY c.id ORDER BY c.numero DESC NULLS LAST, c.id DESC`, [!!a.admin, a.usuario]);
+        WHERE c.empresa = $3 AND ($1 OR c.creado_por = $2) GROUP BY c.id ORDER BY c.numero DESC NULLS LAST, c.id DESC`, [!!a.admin, a.usuario, emp]);
       return json(res, 200, { rendiciones: r.rows });
     }
 
@@ -68,13 +70,15 @@ export default async function handler(req, res) {
       const cli = await pool.connect();
       try {
         await cli.query('BEGIN');
-        const vals = [c.numero ? parseInt(c.numero, 10) : null, f(c.fecha), t(c.nombre), t(c.rut, 20), n(c.monto_asignado), '9001', 'CM', t(c.girar_a), t(c.girar_rut, 20)];
+        // códigos fijos del formato: los de la empresa (ej. 9001 / CM)
+        const ec = (await cli.query('SELECT codigo, area FROM empresas WHERE id=$1', [emp])).rows[0] || {};
+        const vals = [c.numero ? parseInt(c.numero, 10) : null, f(c.fecha), t(c.nombre), t(c.rut, 20), n(c.monto_asignado), ec.codigo || null, ec.area || null, t(c.girar_a), t(c.girar_rut, 20)];
         if (id) {
-          await cli.query(`UPDATE rendiciones SET numero=$2, fecha=$3, nombre=$4, rut=$5, monto_asignado=$6, codigo=$7, area=$8, girar_a=$9, girar_rut=$10, actualizado=now() WHERE id=$1`, [id, ...vals]);
+          await cli.query(`UPDATE rendiciones SET numero=$2, fecha=$3, nombre=$4, rut=$5, monto_asignado=$6, girar_a=$9, girar_rut=$10, actualizado=now(), codigo=COALESCE(codigo,$7), area=COALESCE(area,$8) WHERE id=$1`, [id, ...vals]);
         } else {
-          if (!vals[0]) vals[0] = (await cli.query('SELECT COALESCE(MAX(numero), 0) + 1 AS n FROM rendiciones')).rows[0].n;
-          id = (await cli.query(`INSERT INTO rendiciones (numero, fecha, nombre, rut, monto_asignado, codigo, area, girar_a, girar_rut, creado_por)
-                                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`, [...vals, a.usuario])).rows[0].id;
+          if (!vals[0]) vals[0] = (await cli.query('SELECT COALESCE(MAX(numero), 0) + 1 AS n FROM rendiciones WHERE empresa=$1', [emp])).rows[0].n;
+          id = (await cli.query(`INSERT INTO rendiciones (numero, fecha, nombre, rut, monto_asignado, codigo, area, girar_a, girar_rut, creado_por, empresa)
+                                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`, [...vals, a.usuario, emp])).rows[0].id;
         }
         const guardadas = [];
         for (const [i, l] of (Array.isArray(b.lineas) ? b.lineas : []).entries()) {
@@ -118,6 +122,6 @@ export default async function handler(req, res) {
     }
     return json(res, 400, { error: 'Acción desconocida' });
   } catch (e) {
-    return json(res, 500, { error: e.message });
+    return json(res, e.status || 500, { error: e.message });
   }
 }

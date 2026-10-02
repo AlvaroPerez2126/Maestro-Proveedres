@@ -1,4 +1,4 @@
-import { db, autorizar, json, PAGINAS } from '../lib/db.js';
+import { db, autorizar, json, PAGINAS, empresasPermitidas, empresaActiva } from '../lib/db.js';
 import { asegurarEsquema, CONSULTAS } from '../lib/schema.js';
 
 // GET /api/datos?v=compras&offset=0&limit=4000
@@ -14,9 +14,11 @@ export default async function handler(req, res) {
     // vistas de datos que este usuario puede leer (según sus páginas)
     const vistas = new Set(a.paginas.map(p => PAGINAS[p]));
 
+    const emp = await empresaActiva(req, a);
     if (v === 'estado') {
-      const r = await pool.query(`SELECT fecha, detalle FROM cargas ORDER BY id DESC LIMIT 1`);
-      return json(res, 200, { ultima: r.rows[0] || null, usuario: a.usuario, nombre: a.nombre, admin: a.admin, paginas: a.paginas, vistas: [...vistas] });
+      const r = await pool.query(`SELECT fecha, detalle FROM cargas WHERE empresa = $1 ORDER BY id DESC LIMIT 1`, [emp]);
+      return json(res, 200, { ultima: r.rows[0] || null, usuario: a.usuario, nombre: a.nombre, admin: a.admin, paginas: a.paginas, vistas: [...vistas],
+        empresa: emp, empresas: await empresasPermitidas(a) });
     }
     const q = CONSULTAS[v];
     if (!q) return json(res, 400, { error: 'Vista desconocida' });
@@ -24,11 +26,11 @@ export default async function handler(req, res) {
     const offset = Math.max(0, parseInt(url.searchParams.get('offset') || '0', 10));
     const limit = Math.min(6000, Math.max(1, parseInt(url.searchParams.get('limit') || '4000', 10)));
     const [cnt, r] = await Promise.all([
-      pool.query(`SELECT count(*)::int AS n FROM (${q}) t`),
-      pool.query({ text: `${q} OFFSET $1 LIMIT $2`, values: [offset, limit], rowMode: 'array' }),
+      pool.query(`SELECT count(*)::int AS n FROM (${q}) t`, [emp]),
+      pool.query({ text: `${q} OFFSET $2 LIMIT $3`, values: [emp, offset, limit], rowMode: 'array' }),
     ]);
     return json(res, 200, { total: cnt.rows[0].n, cols: r.fields.map(f => f.name), rows: r.rows });
   } catch (e) {
-    return json(res, 500, { error: e.message });
+    return json(res, e.status || 500, { error: e.message });
   }
 }

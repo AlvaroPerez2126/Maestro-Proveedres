@@ -391,6 +391,8 @@ const authHdr = () => ({ 'x-usuario': encodeURIComponent(S.usuario), 'x-clave': 
 const empAct = () => ((S.estado && S.estado.empresas) || []).find(e => e.id === S.empresa) || { nombre: '', rut: '' };
 async function api(path, opts = {}) {
   const r = await fetch(path, { ...opts, headers: { 'Content-Type': 'application/json', ...authHdr(), ...(opts.headers || {}) } });
+  // 499 no lo genera la web: es la respuesta típica de un antivirus/proxy (p. ej. Kaspersky) que bloquea la conexión
+  if (r.status === 499) { const e = new Error('Error 499: el antivirus o el filtro de internet de este computador bloqueó la conexión con la web. No es un problema de la clave ni del usuario. Prueba desde otro navegador, desde el celular, o pide a TI agregar maestro-proveedres.vercel.app como sitio de confianza.'); e.status = 499; throw e; }
   let j; try { j = await r.json(); } catch(e) { throw new Error('Respuesta inválida del servidor (' + r.status + ')'); }
   if (!r.ok) { const e = new Error(j.error || ('Error ' + r.status)); e.status = r.status; throw e; }
   return j;

@@ -4,8 +4,9 @@ import { asegurarEsquema } from '../lib/schema.js';
 import { estampar } from '../lib/timbre.js';
 
 // Documentos PDF de una factura del cruce (RUT + Folio + Tipo doc).
-//   clase = factura | oc      -> documento subido por el encargado
-//   clase = union             -> FACTURA + OC unidos en un solo PDF (se genera al pedirlo)
+//   clase = factura | oc | oc2 | oc3…  -> documento subido por el encargado (un documento puede tener varias OC)
+//   clase = union                      -> FACTURA + todas las OC unidas en un solo PDF (se genera al pedirlo)
+//   POST ...&clase=oc&nueva=1          -> agrega una OC más (se guarda en la primera clase libre: oc, oc2, oc3…)
 //   La factura se entrega con su TIMBRE de recepción (si tiene); &original=1 la entrega sin timbre.
 // GET    /api/pdf?rut&folio&tipo&clase   -> descarga
 // POST   /api/pdf?rut&folio&tipo&clase   (cuerpo = PDF, header x-nombre) -> sube o reemplaza
@@ -13,7 +14,9 @@ import { estampar } from '../lib/timbre.js';
 export const config = { api: { bodyParser: false } };
 const MAX = 4 * 1024 * 1024; // 4 MB (Vercel acepta hasta 4,5 MB por solicitud)
 const CRUCE = ['cruce', 'atrasos', 'rapido'];
-const NOMBRE = { factura: 'factura', oc: 'orden de compra' };
+const NOMBRE = c => c === 'factura' ? 'factura' : 'orden de compra';
+const MAX_OC = 20;
+const esOC = c => /^oc([2-9]|1[0-9]|20)?$/.test(c);
 
 async function leerCuerpo(req) {
   if (Buffer.isBuffer(req.body)) return req.body;
@@ -49,34 +52,39 @@ export default async function handler(req, res) {
     const rut = (u.searchParams.get('rut') || '').trim();
     const folio = parseInt(u.searchParams.get('folio') || '', 10);
     const tipo = parseInt(u.searchParams.get('tipo') || '0', 10) || 0;
-    const clase = (u.searchParams.get('clase') || 'factura').toLowerCase();
+    let clase = (u.searchParams.get('clase') || 'factura').toLowerCase();
     if (!rut || !Number.isFinite(folio)) return json(res, 400, { error: 'Falta RUT o folio.' });
-    if (!['factura', 'oc', 'union'].includes(clase)) return json(res, 400, { error: 'Tipo de documento inválido.' });
+    if (!['factura', 'union'].includes(clase) && !esOC(clase)) return json(res, 400, { error: 'Tipo de documento inválido.' });
     const emp = await empresaActiva(req, a);
     const clave = [rut, folio, tipo, emp];
 
     if (req.method === 'GET' && clase === 'union') {
-      const r = await pool.query(`SELECT clase, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase IN ('factura','oc')`, clave);
-      const f = r.rows.find(x => x.clase === 'factura'), o = r.rows.find(x => x.clase === 'oc');
-      if (!f || !o) return json(res, 404, { error: `Falta ${!f ? 'la factura' : 'la orden de compra'} para generar la unión.` });
+      const r = await pool.query(`SELECT clase, nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND (clase = 'factura' OR clase ~ '^oc[0-9]*$') ORDER BY length(clase), clase`, clave);
+      const f = r.rows.find(x => x.clase === 'factura'), ocs = r.rows.filter(x => x.clase !== 'factura');
+      if (!f || !ocs.length) return json(res, 404, { error: `Falta ${!f ? 'la factura' : 'la orden de compra'} para generar la unión.` });
       const union = await PDFDocument.create();
       const facturaTimbrada = await conTimbre(pool, clave, f.datos);
-      for (const [datos, nom] of [[facturaTimbrada, 'la factura'], [o.datos, 'la orden de compra']]) {
+      for (const [datos, nom] of [[facturaTimbrada, 'la factura'], ...ocs.map((o, i) => [o.datos, `la OC ${i + 1} (${o.nombre || o.clase})`])]) {
         let src;
         try { src = await PDFDocument.load(datos, { ignoreEncryption: true }); }
         catch (e) { return json(res, 422, { error: `No se pudo leer el PDF de ${nom} (puede estar protegido o dañado). Vuelve a subirlo.` }); }
         (await union.copyPages(src, src.getPageIndices())).forEach(p => union.addPage(p));
       }
-      union.setTitle(`Factura ${folio} + OC`);
+      union.setTitle(`Factura ${folio} + ${ocs.length > 1 ? ocs.length + ' OC' : 'OC'}`);
       return enviarPdf(res, Buffer.from(await union.save()), `FACTURA_OC_${folio}.pdf`);
     }
 
     if (clase === 'union') return json(res, 400, { error: 'La unión se genera sola; sube la factura y la OC por separado.' });
+    if (req.method === 'POST' && esOC(clase) && u.searchParams.get('nueva') === '1') {   // agregar otra OC: primera clase libre
+      const usadas = new Set((await pool.query(`SELECT clase FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase ~ '^oc[0-9]*$'`, clave)).rows.map(x => x.clase));
+      clase = ['oc', ...Array.from({ length: MAX_OC - 1 }, (_, i) => 'oc' + (i + 2))].find(c => !usadas.has(c));
+      if (!clase) return json(res, 400, { error: `Máximo ${MAX_OC} OC por documento.` });
+    }
     const k = [...clave, clase];
 
     if (req.method === 'GET') {
       const r = await pool.query('SELECT nombre, datos FROM cruce_pdfs WHERE rut=$1 AND folio=$2 AND tipo_doc=$3 AND empresa=$4 AND clase=$5', k);
-      if (!r.rowCount) return json(res, 404, { error: `No hay ${NOMBRE[clase]} para este documento.` });
+      if (!r.rowCount) return json(res, 404, { error: `No hay ${NOMBRE(clase)} para este documento.` });
       const datos = clase === 'factura' && u.searchParams.get('original') !== '1' ? await conTimbre(pool, clave, r.rows[0].datos) : r.rows[0].datos;
       return enviarPdf(res, datos, r.rows[0].nombre || `${clase}_${folio}.pdf`);
     }
@@ -92,7 +100,7 @@ export default async function handler(req, res) {
         `INSERT INTO cruce_pdfs (rut, folio, tipo_doc, empresa, clase, nombre, tam, datos, subido_por, subido) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, now())
          ON CONFLICT (empresa, rut, folio, tipo_doc, clase) DO UPDATE SET nombre=EXCLUDED.nombre, tam=EXCLUDED.tam, datos=EXCLUDED.datos, subido_por=EXCLUDED.subido_por, subido=now()`,
         [...k, nombre, datos.length, datos, a.usuario]);
-      return json(res, 200, { ok: true, nombre, tam: datos.length, por: a.usuario });
+      return json(res, 200, { ok: true, nombre, tam: datos.length, por: a.usuario, clase });
     }
 
     if (req.method === 'DELETE') {

@@ -221,6 +221,7 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .togl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--txt2);cursor:pointer;margin-left:auto}
 .mesc{font-size:11.5px;font-weight:600;color:var(--verde-osc);background:var(--verde-suave);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
+.ocs{flex-wrap:wrap;max-width:230px} .ocit{display:inline-flex;gap:2px} .ocn{font-size:10.5px;color:var(--txt2);font-weight:600}
 .pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1F2A1A;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:.2s;z-index:100;pointer-events:none;max-width:90vw}
 #toast.on{opacity:1;transform:translateX(-50%)} #toast.err{background:var(--rojo)}
@@ -792,7 +793,7 @@ const COLS_CRUCE = () => [
   { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
   { t: 'Días atraso', v: r => r.dias_atraso, f: 'num', html: r => celdaAtraso(r.dias_atraso) },
   { t: 'Factura', v: r => r.pdf_nombre || primerLink(r.pdf), html: r => celdaPdf(r, 'factura') },
-  { t: 'OC', v: r => r.oc_nombre, html: r => celdaPdf(r, 'oc') },
+  { t: 'OC', v: r => ocLista(r).map(o => o.n).join(' | '), html: r => celdaOC(r) },
   { t: 'Factura + OC', v: r => r.pdf_nombre && r.oc_nombre ? 'Sí' : '', html: r => celdaUnion(r) },
 ];
 const estadoDocs = r => r.pdf_nombre && r.oc_nombre ? 'Factura + OC' : r.pdf_nombre ? 'Solo factura' : r.oc_nombre ? 'Solo OC' : 'Sin documentos';
@@ -809,17 +810,35 @@ function celdaPdf(r, clase = 'factura') {
   const ext = clase === 'factura' ? primerLink(r.pdf) : null;
   return `<span class="pdfc">${ext ? `<a class="pdf" href="${esc(ext)}" target="_blank" rel="noopener" title="PDF en SharePoint">${ICO_PDF}PDF</a>` : ''}<button class="pdfb sub" data-acc="sub" ${k} title="Subir ${clase === 'oc' ? 'la orden de compra' : 'la factura'} (PDF)">⤒ Subir</button></span>`;
 }
+// Varias OC por documento: cada una con Ver / ✕ y un botón ＋ para agregar otra
+const ocLista = r => Array.isArray(r.oc_lista) ? r.oc_lista : (typeof r.oc_lista === 'string' ? (r.oc_lista = JSON.parse(r.oc_lista)) : []);
+function ocAjustar(r, lista) {   // mantiene los campos resumen (oc_nombre…) al agregar o quitar OC en pantalla
+  r.oc_lista = lista; r.oc_n = lista.length;
+  Object.assign(r, { oc_nombre: lista[0] ? lista[0].n : null, oc_por: lista[0] ? lista[0].p : null, oc_fecha: lista[0] ? lista[0].f : null });
+}
+function celdaOC(r) {
+  const lista = ocLista(r);
+  if (!lista.length) return celdaPdf(r, 'oc');
+  const base = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}"`;
+  const items = lista.map((o, i) => {
+    const puede = S.estado && (S.estado.admin || S.estado.usuario === o.p);
+    const info = `OC ${i + 1}: ${o.n} · subida por ${o.p || '?'}${o.f ? ' el ' + new Date(o.f).toLocaleString('es-CL', {dateStyle:'short', timeStyle:'short'}) : ''}`;
+    return `<span class="ocit"><button class="pdfb ver" data-acc="ver" ${base} data-clase="${esc(o.c)}" title="${esc(info)}">${ICO_PDF}${lista.length > 1 ? i + 1 : 'Ver'}</button>${puede ? `<button class="pdfb del" data-acc="del" ${base} data-clase="${esc(o.c)}" title="Eliminar OC ${i + 1}">✕</button>` : ''}</span>`;
+  }).join('');
+  return `<span class="pdfc ocs">${items}<button class="pdfb sub" data-acc="sub" ${base} data-clase="oc" data-nueva="1" title="Agregar otra orden de compra (PDF)">＋OC</button></span>`;
+}
 function celdaUnion(r) {
   if (!(r.pdf_nombre && r.oc_nombre)) return `<span class="falta">Falta ${!r.pdf_nombre && !r.oc_nombre ? 'factura y OC' : !r.pdf_nombre ? 'factura' : 'OC'}</span>`;
   const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}" data-clase="union"`;
-  return `<span class="pdfc"><button class="pdfb uni" data-acc="ver" ${k} title="Ver factura + OC en un solo PDF">${ICO_PDF}Ver</button><button class="pdfb" data-acc="bajar" ${k} title="Descargar factura + OC">⤓</button></span>`;
+  const n = ocLista(r).length || 1;
+  return `<span class="pdfc"><button class="pdfb uni" data-acc="ver" ${k} title="Ver factura + ${n > 1 ? n + ' OC' : 'OC'} en un solo PDF">${ICO_PDF}Ver</button><button class="pdfb" data-acc="bajar" ${k} title="Descargar factura + ${n > 1 ? n + ' OC' : 'OC'}">⤓</button>${n > 1 ? `<small class="ocn">${n} OC</small>` : ''}</span>`;
 }
 // Acciones de PDF (delegadas: funcionan aunque la tabla se vuelva a dibujar)
 document.addEventListener('click', async e => {
   const b = e.target.closest('.pdfb'); if (!b || !b.dataset.acc) return;
   e.preventDefault(); e.stopPropagation();
-  const clase = b.dataset.clase || 'factura', esOC = clase === 'oc';
-  const q = `rut=${encodeURIComponent(b.dataset.rut)}&folio=${b.dataset.folio}&tipo=${b.dataset.tipo}&clase=${clase}`;
+  const clase = b.dataset.clase || 'factura', esOC = /^oc\d*$/.test(clase);
+  const q = `rut=${encodeURIComponent(b.dataset.rut)}&folio=${b.dataset.folio}&tipo=${b.dataset.tipo}&clase=${clase}${b.dataset.nueva ? '&nueva=1' : ''}`;
   const fila = (S.datos.cruce || []).find(r => r.rut === b.dataset.rut && String(r.folio) === b.dataset.folio && String(r.tipo_doc ?? 0) === b.dataset.tipo);
   const hdr = authHdr();
   const repintar = () => { const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) pintarCuerpo(p, fuente(p)); };
@@ -850,7 +869,7 @@ document.addEventListener('click', async e => {
     try {
       const r = await fetch('/api/pdf?' + q, { method: 'DELETE', headers: hdr });
       const j = await r.json(); if (!r.ok) throw new Error(j.error);
-      if (fila) Object.assign(fila, esOC ? { oc_nombre: null, oc_por: null, oc_fecha: null } : { pdf_nombre: null, pdf_por: null, pdf_fecha: null, timbre_por: null, timbre_fecha: null });
+      if (fila) { if (esOC) ocAjustar(fila, ocLista(fila).filter(o => o.c !== clase)); else Object.assign(fila, { pdf_nombre: null, pdf_por: null, pdf_fecha: null, timbre_por: null, timbre_fecha: null }); }
       repintar(); aviso(esOC ? 'OC eliminada.' : 'Factura eliminada.');
     } catch (err) { aviso(err.message, true); }
   }
@@ -864,9 +883,9 @@ document.addEventListener('click', async e => {
         const r = await fetch('/api/pdf?' + q, { method: 'POST', body: f, headers: { ...hdr, 'Content-Type': 'application/octet-stream', 'x-nombre': encodeURIComponent(f.name) } });
         const j = await r.json(); if (!r.ok) throw new Error(j.error);
         const ahora = new Date().toISOString();
-        if (fila) Object.assign(fila, esOC ? { oc_nombre: j.nombre, oc_por: j.por, oc_fecha: ahora } : { pdf_nombre: j.nombre, pdf_por: j.por, pdf_fecha: ahora });
-        repintar(); aviso((esOC ? 'OC subida: ' : 'Factura subida: ') + j.nombre + (fila && fila.pdf_nombre && fila.oc_nombre ? ' · Factura + OC lista' : ''));
-      } catch (err) { b.disabled = false; b.textContent = '⤒ Subir'; aviso(err.message, true); }
+        if (fila) { if (esOC) { const l = ocLista(fila).filter(o => o.c !== j.clase).concat([{ c: j.clase, n: j.nombre, p: j.por, f: ahora }]); l.sort((a, b) => a.c.length - b.c.length || (a.c < b.c ? -1 : 1)); ocAjustar(fila, l); } else Object.assign(fila, { pdf_nombre: j.nombre, pdf_por: j.por, pdf_fecha: ahora }); }
+        repintar(); aviso((esOC ? `OC ${fila ? ocLista(fila).length : ''} subida: ` : 'Factura subida: ') + j.nombre + (fila && fila.pdf_nombre && fila.oc_nombre ? ' · Factura + OC lista' : ''));
+      } catch (err) { b.disabled = false; b.textContent = b.dataset.nueva ? '＋OC' : '⤒ Subir'; aviso(err.message, true); }
     };
     inp.click();
   }

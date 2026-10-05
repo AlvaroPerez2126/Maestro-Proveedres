@@ -213,6 +213,10 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .lin{position:relative} .lin .tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--borde);box-shadow:var(--sombra);border-radius:8px;padding:6px 9px;font-size:12px;white-space:nowrap;transform:translate(-50%,-110%);display:none;z-index:5}
 .lin .tip b{display:block;color:var(--txt)} .lin .tip span{color:var(--txt2)}
 #mo1 .card-h h3{white-space:nowrap}
+.fuente{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:var(--txt2)}
+.fuente b{color:var(--txt)} .fuente .err{color:var(--rojo);flex-basis:100%} .fuente input{flex:1;min-width:220px;padding:6px 9px;border:1px solid var(--borde);border-radius:7px;font:inherit}
+.fuente .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);display:inline-block} .fuente .dot.mal{background:var(--rojo)} .fuente .dot.gir{background:var(--ambar);animation:pul 1s infinite}
+@keyframes pul{50%{opacity:.3}}
 .togl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--txt2);cursor:pointer;margin-left:auto}
 .mesc{font-size:11.5px;font-weight:600;color:var(--verde-osc);background:var(--verde-suave);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
@@ -438,14 +442,15 @@ async function cargarTodo() {
   let n = 0; const prog = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n})`; };
   const vistas = S.estado.vistas || []; const tot = vistas.length;
   const prog2 = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/${tot})`; };
-  const [compras, saldo, pagos, maestro, cruce, mo, moasis] = await Promise.all(['compras','saldo','pagos','maestro','cruce','mo','moasis'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
+  const [compras, saldo, pagos, maestro, cruce, mo, moasis, asiscontr] = await Promise.all(['compras','saldo','pagos','maestro','cruce','mo','moasis','asiscontr'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
   compras.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   saldo.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   pagos.forEach(r => r.nombre_proveedor = limpiarNombre(r.nombre_proveedor));
   cruce.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   mo.forEach(r => { r.total_cuartel = +r.total_cuartel || 0; r.bono = +r.bono || 0; r.n_jornada = +r.n_jornada || 0; r.cantidad = +r.cantidad || 0; r.fecha = String(r.fecha).slice(0, 10); });
   moasis.forEach(r => { r.fecha = String(r.fecha).slice(0, 10); r.asistencia = +r.asistencia || 0; });
-  S.datos = { compras, saldo, pagos, maestro, cruce, mo, moasis };
+  asiscontr.forEach(r => { r.fecha = String(r.fecha).slice(0, 10); r.marcas = +r.marcas || 0; });
+  S.datos = { compras, saldo, pagos, maestro, cruce, mo, moasis, asiscontr };
   pintarActualizacion();
 }
 const limpiarNombre = s => s == null ? s : String(s).replace(/^'+/, '').trim();
@@ -1459,6 +1464,37 @@ const PAGINAS = [
           { t: 'Total cuartel', v: r => r.total, f: 'clp', sum: true }, { t: 'Observación', v: r => r.obs ? String(r.obs).replace(/\s+/g, ' ') : '', max: 220 } ] });
       if (!S.datos.mo.length) el.insertAdjacentHTML('afterbegin', '<div class="aviso">Aún no hay datos. Sube <b>RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx</b> en <a href="#cargar">Actualizar datos</a>.</div>');
     } },
+  // ---------------- ASISTENCIA CONTRATISTA (Google Sheets, automática) ----------------
+  { id: 'asiscontr', grupo: 'MO externa', titulo: 'Asistencia contratista', ic: 'cal', desc: 'Asistencia diaria por trabajador y por contratista, leída automáticamente desde Google Sheets.',
+    src: d => d.asiscontr,
+    defaultsDin: d => { const f = d.asiscontr.map(r => r.fecha).filter(Boolean).sort(); if (!f.length) return {}; const u = f[f.length - 1]; return { anio: [anio(u)], mes: [mes(u)] }; },
+    filtros: [
+      F.multi('trab', 'Nombre', r => r.trabajador),
+      F.multi('contr', 'Contratista', r => r.contratista),
+      F.chips('mes', 'Mes', r => mes(r.fecha), fMes),
+      F.chips('anio', 'Año', r => anio(r.fecha)),
+      F.fecha('fecha', 'Fecha', r => r.fecha),
+    ],
+    cuerpo(filas, el) {
+      const dd = f => f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4);
+      const ordF = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+      const trab = new Set(filas.map(r => r.trabajador)), dias = new Set(filas.map(r => r.fecha));
+      const porDia = agrupar(filas, r => r.fecha, () => 1);
+      const pico = [...porDia.entries()].sort((a, b) => b[1] - a[1])[0];
+      el.innerHTML = `<div id="asFuente"></div>` + kpis([
+        { l: 'Trabajadores', v: nf.format(trab.size), s: 'distintos en el filtro' },
+        { l: 'Contratistas', v: nf.format(new Set(filas.map(r => r.contratista)).size) },
+        { l: 'Días con asistencia', v: nf.format(dias.size) },
+        { l: 'Promedio por día', v: nf.format(dias.size ? Math.round(filas.length / dias.size) : 0), s: pico ? `Máximo ${nf.format(pico[1])} el ${fecha(pico[0])}` : '' },
+      ]) + '<div id="as1"></div><div id="as2" style="margin-top:14px"></div>';
+      pintarFuenteAsis();
+      const col = { v: r => r.fecha, fmt: dd, sort: ordF };
+      matriz($('#as1'), { titulo: 'Asistencia por trabajador (marcas por día)', filas, val: r => r.marcas, fmt: 'num', alto: 520, limite: 200,
+        niveles: [{ t: 'Nombre', v: r => r.trabajador }, { t: 'Contratista', v: r => r.contratista }], col });
+      matriz($('#as2'), { titulo: 'Asistencia por contratista (marcas por día)', filas, val: r => r.marcas, fmt: 'num', alto: 420,
+        niveles: [{ t: 'Contratista', v: r => r.contratista }, { t: 'Nombre', v: r => r.trabajador }], col });
+      if (!S.datos.asiscontr.length && !(S.asisFuente && S.asisFuente.url)) el.querySelector('#as1').innerHTML = '';
+    } },
   // ---------------- CAJA CHICA / FONDOS POR RENDIR ----------------
   { id: 'rendiciones', grupo: 'Caja chica', titulo: 'Rendiciones', ic: 'caja', desc: 'Fondos por rendir y caja chica: líneas de gasto con su respaldo (foto o PDF) y PDF completo.',
     render: c => S.sub ? pintarRendicion(c, parseInt(S.sub, 10)) : pintarRendiciones(c) },
@@ -1469,6 +1505,46 @@ const PAGINAS = [
   { id: 'empresas', titulo: 'Empresas', ic: 'edificio', desc: 'Empresas del holding: nombre, RUT y códigos del formato de rendición.', soloAdmin: true, render: c => pintarEmpresas(c) },
   { id: 'usuarios', titulo: 'Usuarios y permisos', ic: 'gente', desc: 'Crea usuarios y elige qué páginas ve cada uno.', soloAdmin: true },
 ];
+// Asistencia contratista: estado de la planilla de Google y sincronización automática (cada 10 min al entrar)
+function pintarFuenteAsis() {
+  const el = $('#asFuente'); if (!el) return;
+  const f = S.asisFuente, admin = S.estado && S.estado.admin, gir = S.asisSync;
+  const cuando = f && f.ultima ? new Date(f.ultima).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : null;
+  el.innerHTML = `<div class="fuente"><span class="dot ${gir ? 'gir' : f && f.error ? 'mal' : ''}"></span>
+    <span>Fuente: <b>Google Sheets</b> · ${gir ? 'sincronizando…' : cuando ? `última lectura <b>${cuando}</b>${f.filas != null ? ` · ${nf.format(f.filas)} registros` : ''}` : 'sin sincronizar'}</span>
+    ${f && f.url ? `<button class="btn" id="asSync" ${gir ? 'disabled' : ''}>⟳ Sincronizar ahora</button>` : ''}
+    ${admin ? `<input id="asUrl" type="url" placeholder="Pega aquí el enlace de la planilla de Google Sheets" value="${esc((f && f.url) || '')}"><button class="btn prim" id="asGuardar">Guardar enlace</button>` : ''}
+    ${!f || !f.url ? `<span>${admin ? '' : 'Un administrador debe configurar el enlace de la planilla.'}</span>` : ''}
+    ${f && f.error ? `<span class="err">⚠ ${esc(f.error)}</span>` : ''}</div>`;
+  const bs = $('#asSync'); if (bs) bs.onclick = () => syncAsistencia(true);
+  const bg = $('#asGuardar'); if (bg) bg.onclick = () => syncAsistencia(true, $('#asUrl').value.trim());
+}
+async function syncAsistencia(forzar = false, url = null) {
+  if (S.asisSync) return;
+  S.asisSync = true; pintarFuenteAsis();
+  let cambio = false;
+  try {
+    const r = await api('/api/sheet', { method: 'POST', body: JSON.stringify(url != null ? { accion: 'config', url } : { accion: 'sync', forzar }) });
+    S.asisFuente = r.fuente || S.asisFuente; cambio = !r.omitido;
+    if (cambio) { aviso(`Asistencia actualizada: ${nf.format(r.filas)} registros desde Google Sheets`); }
+  } catch (e) {
+    if (url != null || forzar) aviso(e.message, true);
+    try { S.asisFuente = (await api('/api/sheet')).fuente; } catch (_) {}
+  }
+  if (cambio) {
+    try { const v = await traerVista('asiscontr'); v.forEach(r => { r.fecha = String(r.fecha).slice(0, 10); r.marcas = +r.marcas || 0; }); S.datos.asiscontr = v; } catch (e) { aviso(e.message, true); }
+  }
+  S.asisSync = false;
+  if (S.pagina === 'asiscontr') { if (cambio) { delete S.filtros.asiscontr; renderPagina(); } else pintarFuenteAsis(); }
+}
+async function entrarAsistencia() {
+  if (S.asisEmp !== S.empresa) { S.asisEmp = S.empresa; S.asisFuente = null; S.asisVisto = 0; }
+  if (Date.now() - (S.asisVisto || 0) < 60000) return;     // no repetir al cambiar filtros
+  S.asisVisto = Date.now();
+  try { S.asisFuente = (await api('/api/sheet')).fuente; pintarFuenteAsis(); } catch (e) { return; }
+  if (S.asisFuente && S.asisFuente.url) syncAsistencia(false);   // el servidor la omite si se leyó hace menos de 10 min
+}
+
 // ¿Puede el usuario actual ver esta página?
 function permitida(p) {
   const e = S.estado; if (!e) return p.id === 'inicio';
@@ -1500,6 +1576,7 @@ function renderPagina() {
   if (p.render) return p.render(c);
   if (!S.datos) return;
   if (!S.filtros[p.id] && p.defaultsDin) S.filtros[p.id] = p.defaultsDin(S.datos);
+  if (p.id === 'asiscontr') setTimeout(entrarAsistencia, 0);
   c.innerHTML = `<div class="slicers" id="slicers"></div><div id="cuerpo"></div>`;
   const filas = fuente(p);
   pintarSlicers(p, filas);

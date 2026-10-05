@@ -81,8 +81,10 @@ export async function sincronizar(pool, emp, url, usuario) {
     const fecha = aFecha(c[campos.length]); if (!fecha || !o.contratista) continue;
     const n = agrupada ? (Number(c[campos.length + 1]?.v) || 1) : 1;
     let trab = o.trabajador || (o.rut ? o.rut.replace(RUT, '').replace(/@.*$/, '').trim() : null);
-    if (o.apellido && trab && !trab.toUpperCase().includes(o.apellido.toUpperCase())) trab += ' ' + o.apellido;
-    const rut = o.rut ? ((o.rut.match(RUT) || [])[0] || o.rut) : null;
+    // En la planilla de asistencia la columna "Last Name" trae el RUT: si parece RUT se usa como RUT, si no, como apellido
+    const rutApe = o.apellido && (o.apellido.match(RUT) || [])[0];
+    if (o.apellido && !rutApe && trab && !trab.toUpperCase().includes(o.apellido.toUpperCase())) trab += ' ' + o.apellido;
+    const rut = rutApe || (o.rut ? ((o.rut.match(RUT) || [])[0] || o.rut) : null);
     const k = [trab, rut, o.contratista, fecha].join('|');
     const x = acc.get(k); if (x) x.marcas += n; else acc.set(k, { trabajador: trab, rut, contratista: o.contratista, fecha, marcas: n });
   }

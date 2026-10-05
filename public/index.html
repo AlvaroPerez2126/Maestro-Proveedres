@@ -213,6 +213,7 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .lin{position:relative} .lin .tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--borde);box-shadow:var(--sombra);border-radius:8px;padding:6px 9px;font-size:12px;white-space:nowrap;transform:translate(-50%,-110%);display:none;z-index:5}
 .lin .tip b{display:block;color:var(--txt)} .lin .tip span{color:var(--txt2)}
 #mo1 .card-h h3{white-space:nowrap}
+#as1 table.pv td.f{max-width:380px}
 .fuente{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;background:var(--panel);border:1px solid var(--borde);border-radius:var(--r);padding:9px 14px;margin-bottom:14px;font-size:12.5px;color:var(--txt2)}
 .fuente b{color:var(--txt)} .fuente .err{color:var(--rojo);flex-basis:100%} .fuente input{flex:1;min-width:220px;padding:6px 9px;border:1px solid var(--borde);border-radius:7px;font:inherit}
 .fuente .dot{width:8px;height:8px;border-radius:50%;background:var(--verde);display:inline-block} .fuente .dot.mal{background:var(--rojo)} .fuente .dot.gir{background:var(--ambar);animation:pul 1s infinite}
@@ -1491,7 +1492,7 @@ const PAGINAS = [
       pintarFuenteAsis();
       const col = { v: r => r.fecha, fmt: dd, sort: ordF };
       matriz($('#as1'), { titulo: 'Asistencia por trabajador (marcas por día)', filas, val: r => r.marcas, fmt: 'num', alto: 520, limite: 200,
-        niveles: [{ t: 'Nombre', v: r => r.trabajador }, { t: 'Contratista', v: r => r.contratista }], col });
+        niveles: [{ t: 'Nombre · RUT', v: r => r.trabajador, lbl: (k, r) => esc(k) + (r.rut ? ` <small style="color:var(--txt2);font-weight:400">${esc(r.rut)}</small>` : '') }, { t: 'Contratista', v: r => r.contratista }], col });
       matriz($('#as2'), { titulo: 'Asistencia por contratista (marcas por día)', filas, val: r => r.marcas, fmt: 'num', alto: 420,
         niveles: [{ t: 'Contratista', v: r => r.contratista }, { t: 'Nombre', v: r => r.trabajador }], col });
       if (!S.datos.asiscontr.length && !(S.asisFuente && S.asisFuente.url)) el.querySelector('#as1').innerHTML = '';
@@ -1522,36 +1523,52 @@ function pintarFuenteAsis() {
   $('#asXls').onclick = descargarAsistencia;
   const bg = $('#asGuardar'); if (bg) bg.onclick = () => syncAsistencia(true, $('#asUrl').value.trim());
 }
-// Excel con lo filtrado: hoja Detalle (una fila por trabajador y día) + hoja Resumen (días trabajados por persona)
+// Excel con lo filtrado:
+//  1) "Asistencia": tabla como la dinámica de Excel (Nombre, RUT, Contratista y un 1 en cada día trabajado + total)
+//  2) "5 o más días": trabajadores con 5 días trabajados o más en el rango descargado
+//  3) "Detalle": una fila por trabajador y día
 function descargarAsistencia() {
-  const filas = [...(S.asisFiltradas || [])].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0) || String(a.trabajador).localeCompare(String(b.trabajador), 'es'));
+  const filas = S.asisFiltradas || [];
   if (!filas.length) return aviso('No hay datos para los filtros elegidos.', true);
   if (!window.XLSX) return aviso('El lector de Excel aún no carga, intenta en unos segundos.', true);
+  const cmp = (a, b) => String(a ?? '').localeCompare(String(b ?? ''), 'es');
   const serial = f => Date.UTC(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10)) / 864e5 + 25569;
   const cFecha = f => f ? { t: 'n', v: serial(f), z: 'dd-mm-yyyy' } : null;
-  const hoja = (enc, datos, anchos) => {
-    const ws = XLSX.utils.aoa_to_sheet([enc, ...datos]);
+  const dd = f => f.slice(8, 10) + '-' + f.slice(5, 7) + '-' + f.slice(0, 4);
+  const hoja = (aoa, anchos, filtroFilas) => {
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
     ws['!cols'] = anchos.map(w => ({ wch: w }));
-    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length, c: enc.length - 1 } }) };
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: filtroFilas, c: aoa[0].length - 1 } }) };
     return ws;
   };
-  const det = filas.map(r => [r.trabajador, r.rut || '', r.contratista, cFecha(r.fecha), r.marcas]);
-  const g = new Map();
+  // Persona = RUT (o nombre si no hay RUT); una fila por persona + contratista
+  const fechas = [...new Set(filas.map(r => r.fecha))].sort();
+  const per = new Map(), pers = new Map();
   for (const r of filas) {
-    const k = r.trabajador + '|' + r.contratista; const o = g.get(k) || { t: r.trabajador, rut: r.rut, c: r.contratista, dias: new Set() };
-    o.dias.add(r.fecha); if (!o.rut && r.rut) o.rut = r.rut; g.set(k, o);
+    const id = r.rut || r.trabajador, k = id + '|' + r.contratista;
+    const o = per.get(k) || { nombre: r.trabajador, rut: r.rut || '', contr: r.contratista, dias: new Set() };
+    if (r.marcas > 0) o.dias.add(r.fecha); per.set(k, o);
+    const q = pers.get(id) || { nombre: r.trabajador, rut: r.rut || '', contrs: new Set(), dias: new Set() };
+    q.contrs.add(r.contratista); if (r.marcas > 0) q.dias.add(r.fecha); pers.set(id, q);
   }
-  const res = [...g.values()].sort((a, b) => String(a.c).localeCompare(String(b.c), 'es') || String(a.t).localeCompare(String(b.t), 'es')).map(o => {
-    const d = [...o.dias].sort();
-    return [o.t, o.rut || '', o.c, d.length, cFecha(d[0]), cFecha(d[d.length - 1]), d.map(x => x.slice(8, 10) + '/' + x.slice(5, 7)).join(', ')];
+  const lista = [...per.values()].sort((a, b) => cmp(a.nombre, b.nombre) || cmp(a.contr, b.contr));
+  const porDia = fechas.map(f => lista.filter(o => o.dias.has(f)).length);
+  const matriz = [['Nombre', 'RUT', 'Contratista', ...fechas.map(dd), 'Total días'],
+    ...lista.map(o => [o.nombre, o.rut, o.contr, ...fechas.map(f => o.dias.has(f) ? 1 : null), o.dias.size]),
+    ['Total', null, null, ...porDia, porDia.reduce((a, b) => a + b, 0)]];
+  const cinco = [...pers.values()].filter(q => q.dias.size >= 5).sort((a, b) => b.dias.size - a.dias.size || cmp(a.nombre, b.nombre)).map(q => {
+    const d = [...q.dias].sort();
+    return [q.nombre, q.rut, [...q.contrs].sort(cmp).join(', '), d.length, cFecha(d[0]), cFecha(d[d.length - 1]), d.map(x => x.slice(8, 10) + '/' + x.slice(5, 7)).join(', ')];
   });
+  const det = [...filas].sort((a, b) => cmp(a.fecha, b.fecha) || cmp(a.trabajador, b.trabajador)).map(r => [r.trabajador, r.rut || '', r.contratista, cFecha(r.fecha), r.marcas]);
+  const rango = fechas.length === 1 ? fecha(fechas[0]) : `${fecha(fechas[0])} al ${fecha(fechas[fechas.length - 1])}`;
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, hoja(['Nombre', 'RUT', 'Contratista', 'Fecha trabajada', 'Marcas'], det, [36, 14, 34, 15, 8]), 'Detalle');
-  XLSX.utils.book_append_sheet(wb, hoja(['Nombre', 'RUT', 'Contratista', 'Días trabajados', 'Primera fecha', 'Última fecha', 'Fechas trabajadas'], res, [36, 14, 34, 14, 13, 13, 80]), 'Resumen');
-  const fs = filas.map(r => r.fecha).sort();
-  const rango = fs[0] === fs[fs.length - 1] ? fecha(fs[0]) : `${fecha(fs[0])} al ${fecha(fs[fs.length - 1])}`;
+  XLSX.utils.book_append_sheet(wb, hoja(matriz, [34, 13, 30, ...fechas.map(() => 11), 10], lista.length), 'Asistencia');
+  XLSX.utils.book_append_sheet(wb, hoja([['Nombre', 'RUT', 'Contratista', 'Días trabajados', 'Primera fecha', 'Última fecha', 'Fechas trabajadas'], ...cinco,
+    ...(cinco.length ? [] : [['Nadie trabajó 5 días o más en ' + rango]])], [34, 13, 30, 14, 13, 13, 90], Math.max(cinco.length, 1)), '5 o más días');
+  XLSX.utils.book_append_sheet(wb, hoja([['Nombre', 'RUT', 'Contratista', 'Fecha trabajada', 'Marcas'], ...det], [34, 13, 30, 15, 8], det.length), 'Detalle');
   XLSX.writeFile(wb, `Asistencia contratistas ${rango}.xlsx`);
-  aviso(`Excel descargado: ${nf.format(det.length)} filas`);
+  aviso(`Excel descargado: ${nf.format(lista.length)} trabajadores · ${nf.format(cinco.length)} con 5 o más días`);
 }
 async function syncAsistencia(forzar = false, url = null) {
   if (S.asisSync) return;

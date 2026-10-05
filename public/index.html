@@ -206,6 +206,14 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .tfila span{white-space:nowrap}
 .tfila input{flex:1;min-width:0;border:0;border-bottom:1.3px dotted #4a4a4a;background:transparent;color:#2133A0;font:11px Helvetica,Arial,sans-serif;padding:0 2px;height:15px;cursor:text}
 .tfila input:focus{outline:none;background:rgba(59,75,168,.08)}
+.difc{display:inline-block;min-width:34px;text-align:right;padding:1px 6px;border-radius:4px;font-weight:700}
+.difc.mal{background:var(--rojo-claro);color:var(--rojo)} .difc.ok{color:var(--verde-osc)}
+.promc{display:inline-block;min-width:70px;text-align:right;padding:1px 6px;border-radius:4px;font-weight:600}
+.promc.alto{background:var(--rojo-claro);color:var(--rojo)} .promc.bajo{background:var(--verde-claro);color:var(--verde-osc)}
+.lin{position:relative} .lin .tip{position:absolute;pointer-events:none;background:var(--panel);border:1px solid var(--borde);box-shadow:var(--sombra);border-radius:8px;padding:6px 9px;font-size:12px;white-space:nowrap;transform:translate(-50%,-110%);display:none;z-index:5}
+.lin .tip b{display:block;color:var(--txt)} .lin .tip span{color:var(--txt2)}
+#mo1 .card-h h3{white-space:nowrap}
+.togl{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--txt2);cursor:pointer;margin-left:auto}
 .mesc{font-size:11.5px;font-weight:600;color:var(--verde-osc);background:var(--verde-suave);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
 .pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
@@ -378,6 +386,7 @@ const IC = {
   caja:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M12 11v3"/></svg>',
   firma:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-6 5-9 7-9 2 0-1 8 1 8s3-4 5-4 1 3 3 3"/><path d="M3 21h18"/></svg>',
   edificio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h3a1 1 0 0 1 1 1v11M2 21h20M8 7h4M8 11h4M8 15h4"/></svg>',
+  obrero:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M7.5 7a4.5 4.5 0 0 1 9 0M6 7h12M5 21a7 7 0 0 1 14 0M10 16l2 2 3-3.5"/></svg>',
   flecha:'<svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
 
@@ -429,12 +438,14 @@ async function cargarTodo() {
   let n = 0; const prog = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n})`; };
   const vistas = S.estado.vistas || []; const tot = vistas.length;
   const prog2 = () => { const el = $('#progTxt'); if (el) el.textContent = `Leyendo datos desde Neon… (${++n}/${tot})`; };
-  const [compras, saldo, pagos, maestro, cruce] = await Promise.all(['compras','saldo','pagos','maestro','cruce'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
+  const [compras, saldo, pagos, maestro, cruce, mo, moasis] = await Promise.all(['compras','saldo','pagos','maestro','cruce','mo','moasis'].map(v => vistas.includes(v) ? traerVista(v, prog2) : Promise.resolve([])));
   compras.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   saldo.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
   pagos.forEach(r => r.nombre_proveedor = limpiarNombre(r.nombre_proveedor));
   cruce.forEach(r => r.razon_social = limpiarNombre(r.razon_social));
-  S.datos = { compras, saldo, pagos, maestro, cruce };
+  mo.forEach(r => { r.total_cuartel = +r.total_cuartel || 0; r.bono = +r.bono || 0; r.n_jornada = +r.n_jornada || 0; r.cantidad = +r.cantidad || 0; r.fecha = String(r.fecha).slice(0, 10); });
+  moasis.forEach(r => { r.fecha = String(r.fecha).slice(0, 10); r.asistencia = +r.asistencia || 0; });
+  S.datos = { compras, saldo, pagos, maestro, cruce, mo, moasis };
   pintarActualizacion();
 }
 const limpiarNombre = s => s == null ? s : String(s).replace(/^'+/, '').trim();
@@ -691,6 +702,42 @@ function barras(el, cfg) {
       <text x="${X + w/2}" y="${H - 8}" text-anchor="middle" font-size="11">${esc(x.l)}</text></g>`; }).join('');
   el.innerHTML = `<div class="card"><div class="card-h"><h3>${esc(cfg.titulo)}</h3></div><div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.titulo)}">
     <line x1="${pl}" x2="${W - pl}" y1="${H - pb}" y2="${H - pb}" stroke="#DDE3D8"/>${bars}</svg></div></div>`;
+}
+
+// Línea simple (una serie) con cruz y tooltip al pasar el mouse
+function linea(el, cfg) {
+  const d = cfg.datos; const fm = FMT[cfg.fmt || 'clp'];
+  if (!d.length) { el.innerHTML = `<div class="card"><div class="card-h"><h3>${esc(cfg.titulo)}</h3></div><div class="vacio">Sin datos</div></div>`; return; }
+  const W = 860, H = 260, pl = 62, pr = 16, pt = 18, pb = 30;
+  const vs = d.map(x => x.v); let mn = Math.min(...vs), mx = Math.max(...vs);
+  if (cfg.ref != null) { mn = Math.min(mn, cfg.ref); mx = Math.max(mx, cfg.ref); }
+  const pad = (mx - mn) * .12 || mx * .1 || 1; mn = Math.max(0, mn - pad); mx += pad;
+  const X = i => pl + (d.length === 1 ? (W - pl - pr) / 2 : i * (W - pl - pr) / (d.length - 1));
+  const Y = v => pt + (1 - (v - mn) / (mx - mn)) * (H - pt - pb);
+  const ticks = [0, 1, 2, 3, 4].map(k => mn + (mx - mn) * k / 4);
+  const cada = Math.max(1, Math.ceil(d.length / 10));
+  const path = d.map((x, i) => (i ? 'L' : 'M') + X(i).toFixed(1) + ',' + Y(x.v).toFixed(1)).join('');
+  el.innerHTML = `<div class="card"><div class="card-h"><h3>${esc(cfg.titulo)}</h3>${cfg.ref != null ? `<span class="cnt"><svg width="22" height="8" style="vertical-align:middle"><line x1="0" x2="22" y1="4" y2="4" stroke="var(--txt2)" stroke-dasharray="4 4"/></svg> ${esc(cfg.refTxt || '')}: ${fm(cfg.ref)}</span>` : ''}${cfg.extra || ''}</div><div class="chart lin"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(cfg.titulo)}">
+    ${ticks.map(t => `<line x1="${pl}" x2="${W - pr}" y1="${Y(t)}" y2="${Y(t)}" stroke="var(--borde)" stroke-width="1"/><text x="${pl - 6}" y="${Y(t) + 4}" text-anchor="end" font-size="11">${fm(t)}</text>`).join('')}
+    ${cfg.ref != null ? `<line x1="${pl}" x2="${W - pr}" y1="${Y(cfg.ref)}" y2="${Y(cfg.ref)}" stroke="var(--txt2)" stroke-dasharray="4 4" stroke-width="1"/>` : ''}
+    ${d.map((x, i) => i % cada ? '' : `<text x="${X(i)}" y="${H - 9}" text-anchor="middle" font-size="11">${esc(x.l)}</text>`).join('')}
+    <path d="${path}" fill="none" stroke="var(--verde)" stroke-width="2" stroke-linejoin="round"/>
+    ${d.map((x, i) => `<circle cx="${X(i)}" cy="${Y(x.v)}" r="4" fill="var(--verde)" stroke="var(--panel)" stroke-width="2"/>`).join('')}
+    <line class="cz" x1="0" x2="0" y1="${pt}" y2="${H - pb}" stroke="var(--txt2)" stroke-width="1" visibility="hidden"/>
+    <circle class="pz" r="6" fill="var(--verde-osc)" stroke="var(--panel)" stroke-width="2" visibility="hidden"/>
+    <rect class="hit" x="${pl}" y="${pt}" width="${W - pl - pr}" height="${H - pt - pb}" fill="transparent"/></svg><div class="tip"></div></div></div>`;
+  const svg = el.querySelector('svg'), tip = el.querySelector('.tip'), cz = svg.querySelector('.cz'), pz = svg.querySelector('.pz');
+  const mover = ev => {
+    const r = svg.getBoundingClientRect(); const sx = (ev.clientX - r.left) / r.width * W;
+    let i = d.length === 1 ? 0 : Math.round((sx - pl) / ((W - pl - pr) / (d.length - 1))); i = Math.max(0, Math.min(d.length - 1, i));
+    const x = d[i]; cz.setAttribute('x1', X(i)); cz.setAttribute('x2', X(i)); cz.setAttribute('visibility', 'visible');
+    pz.setAttribute('cx', X(i)); pz.setAttribute('cy', Y(x.v)); pz.setAttribute('visibility', 'visible');
+    tip.innerHTML = `<b>${fm(x.v)}</b><span>${esc(x.tip || x.l)}</span>`; tip.style.display = 'block';
+    tip.style.left = (X(i) / W * r.width) + 'px'; tip.style.top = (Y(x.v) / H * r.height) + 'px';
+  };
+  const salir = () => { tip.style.display = 'none'; cz.setAttribute('visibility', 'hidden'); pz.setAttribute('visibility', 'hidden'); };
+  const hit = svg.querySelector('.hit'); hit.addEventListener('mousemove', mover); hit.addEventListener('mouseleave', salir);
+  hit.addEventListener('touchstart', e => mover(e.touches[0]), { passive: true });
 }
 
 function barrasH(el, cfg) {
@@ -1344,6 +1391,74 @@ const PAGINAS = [
       ]) + '<div id="t1"></div>';
       tabla($('#t1'), { titulo: 'Entregar rápido', filas, orden: 10, dir: 1, alto: 620, cols: COLS_CRUCE() });
     } },
+  // ---------------- VALIDACIÓN MO EXTERNA (ASISTENCIA VS AGROSMART) ----------------
+  { id: 'mo', grupo: 'MO externa', titulo: 'Validación MO externa', ic: 'obrero', desc: 'Asistencia real vs ingreso en Agrosmart por contratista y día, promedio por persona y costo MO.',
+    src: d => d.mo,
+    defaultsDin: d => { const f = d.mo.map(r => r.fecha).filter(Boolean).sort(); if (!f.length) return {};
+      // Periodo de pago: del 16 de un mes al 15 del siguiente (el que contiene la última fecha cargada)
+      const [y, m, dd] = f[f.length - 1].split('-').map(Number);
+      const ini = dd >= 16 ? new Date(Date.UTC(y, m - 1, 16)) : new Date(Date.UTC(y, m - 2, 16));
+      const fin = new Date(Date.UTC(ini.getUTCFullYear(), ini.getUTCMonth() + 1, 15));
+      return { fecha: { desde: ini.toISOString().slice(0, 10), hasta: fin.toISOString().slice(0, 10) } }; },
+    filtros: [
+      F.fecha('fecha', 'Fecha', r => r.fecha),
+      F.multi('contr', 'Contratista', r => r.contratista),
+      F.multi('cuartel', 'Cuartel', r => r.cuartel),
+    ],
+    cuerpo(filas, el, p) {
+      const Fv = fget(p), fF = p.filtros[0], fC = p.filtros[1];
+      const fc = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+      // 1) Comparativo asistencia vs Agrosmart (BONO = personas ingresadas) por contratista + fecha
+      const asis = (S.datos.moasis || []).filter(r => pasa(fF, Fv.fecha, r) && pasa(fC, Fv.contr, r));
+      const cmp = new Map(); const K = (c, f) => c + '|' + f;
+      for (const r of filas) { const k = K(r.contratista, r.fecha); const o = cmp.get(k) || { contratista: r.contratista, fecha: r.fecha, asis: 0, agro: 0 }; o.agro += r.bono; cmp.set(k, o); }
+      const conCuartel = Fv.cuartel && Fv.cuartel.length;
+      for (const r of asis) { const k = K(r.contratista, r.fecha); let o = cmp.get(k); if (!o) { if (conCuartel) continue; o = { contratista: r.contratista, fecha: r.fecha, asis: 0, agro: 0 }; cmp.set(k, o); } o.asis += r.asistencia; }
+      const comp = [...cmp.values()]; comp.forEach(o => { o.asis = Math.round(o.asis); o.agro = Math.round(o.agro * 100) / 100; o.dif = Math.round((o.asis - o.agro) * 100) / 100; });
+      const conDif = comp.filter(o => Math.round(o.dif) !== 0);
+      S.opc.moSoloDif = S.opc.moSoloDif || false;
+      // 2) Promedio por contratista + día
+      const pd = new Map();
+      for (const r of filas) { const k = K(r.contratista, r.fecha); const o = pd.get(k) || { contratista: r.contratista, fecha: r.fecha, personas: 0, total: 0 }; o.personas += r.bono; o.total += r.total_cuartel; pd.set(k, o); }
+      const prom = [...pd.values()]; prom.forEach(o => o.prom = o.personas ? o.total / o.personas : null);
+      const personal = suma(filas, r => r.bono), total = suma(filas, r => r.total_cuartel), promG = personal ? total / personal : 0;
+      // 3) Promedio por día (todos los contratistas filtrados)
+      const dia = new Map();
+      for (const r of filas) { const o = dia.get(r.fecha) || { p: 0, t: 0 }; o.p += r.bono; o.t += r.total_cuartel; dia.set(r.fecha, o); }
+      const serie = [...dia.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).filter(([, o]) => o.p).map(([f, o]) => ({ l: fc(f), v: o.t / o.p, tip: `${fecha(f)} · ${nf.format(o.p)} personas · ${clp(o.t)}` }));
+      // 4) Faenas
+      const fa = new Map();
+      for (const r of filas) { const k = [r.n_faena, r.faena, r.cuartel, r.forma_pago].join('|'); const o = fa.get(k) || { n_faena: r.n_faena, faena: r.faena, cuartel: r.cuartel, forma_pago: r.forma_pago, contratista: r.contratista, fecha: r.fecha, jornadas: 0, cantidad: 0, total: 0, obs: r.obs_faena }; o.jornadas += r.n_jornada; o.cantidad += r.cantidad; o.total += r.total_cuartel; fa.set(k, o); }
+      const faenas = [...fa.values()];
+
+      el.innerHTML = kpis([
+        { l: 'Personal', v: nf.format(personal), s: 'según Agrosmart (BONO)' },
+        { l: 'Total MO', v: clp(total), s: Fv.fecha && (Fv.fecha.desde || Fv.fecha.hasta) ? `${Fv.fecha.desde ? fecha(Fv.fecha.desde) : '…'} a ${Fv.fecha.hasta ? fecha(Fv.fecha.hasta) : '…'}` : 'todo el periodo' },
+        { l: 'Promedio por persona', v: clp(promG), s: 'Total MO / personal' },
+        { l: 'Días con diferencia', v: nf.format(conDif.length), c: conDif.length ? 'rojo' : 'verde', s: `Asistencia ${nf.format(suma(comp, o => o.asis))} · Agrosmart ${nf.format(suma(comp, o => o.agro))}` },
+      ]) + '<div class="grid g2b"><div id="mo1"></div><div id="mo2"></div></div><div id="mo3" style="margin-top:14px"></div><div id="mo4" style="margin-top:14px"></div>';
+      const pintarComp = () => {
+        tabla($('#mo1'), { titulo: 'Asistencia vs Agrosmart', filas: S.opc.moSoloDif ? conDif : comp, orden: 1, dir: 1, alto: 460, tam: 200,
+          cols: [ { t: 'Contratista', v: r => r.contratista, max: 200 }, { t: 'Fecha', v: r => r.fecha, f: 'fecha' },
+            { t: 'Asistencia', v: r => r.asis, f: 'num', sum: true }, { t: 'Ingr. Agrosmart', v: r => r.agro, f: 'num', sum: true },
+            { t: 'DIF', v: r => r.dif, f: 'num', sum: true, html: r => `<span class="difc ${Math.round(r.dif) ? 'mal' : 'ok'}">${nf.format(r.dif)}</span>` } ] });
+        const h = $('#mo1 .card-h'); const lb = document.createElement('label'); lb.className = 'togl';
+        lb.innerHTML = `<input type="checkbox" ${S.opc.moSoloDif ? 'checked' : ''}> Solo diferencias`; h.insertBefore(lb, h.querySelector('.buscar'));
+        lb.querySelector('input').onchange = e => { S.opc.moSoloDif = e.target.checked; pintarComp(); };
+      };
+      pintarComp();
+      tabla($('#mo2'), { titulo: 'MO promedio x día', filas: prom, orden: 1, dir: 1, alto: 460, tam: 200,
+        cols: [ { t: 'Contratista', v: r => r.contratista, max: 200 }, { t: 'Fecha', v: r => r.fecha, f: 'fecha' },
+          { t: 'Personas', v: r => r.personas, f: 'num', sum: true }, { t: 'Total', v: r => r.total, f: 'clp', sum: true },
+          { t: 'Promedio', v: r => r.prom, f: 'clp', html: r => r.prom == null ? '' : `<span class="promc ${r.prom > promG ? 'alto' : 'bajo'}" title="${r.prom > promG ? 'Sobre' : 'Bajo'} el promedio general (${clp(promG)})">${clp(r.prom)}</span>` } ] });
+      linea($('#mo3'), { titulo: 'Promedio por día (Total MO / personas)', datos: serie, ref: promG || null, refTxt: 'Promedio periodo' });
+      tabla($('#mo4'), { titulo: 'Detalle de faenas', filas: faenas, orden: 0, dir: 1, alto: 520,
+        cols: [ { t: 'N° faena', v: r => r.n_faena }, { t: 'Fecha', v: r => r.fecha, f: 'fecha' }, { t: 'Contratista', v: r => r.contratista, max: 180 },
+          { t: 'Faena', v: r => r.faena, max: 170 }, { t: 'Cuartel', v: r => r.cuartel }, { t: 'F. pago', v: r => r.forma_pago },
+          { t: 'Jornadas', v: r => r.jornadas, f: 'num', sum: true }, { t: 'Cantidad', v: r => r.cantidad, f: 'num', sum: true },
+          { t: 'Total cuartel', v: r => r.total, f: 'clp', sum: true }, { t: 'Observación', v: r => r.obs ? String(r.obs).replace(/\s+/g, ' ') : '', max: 220 } ] });
+      if (!S.datos.mo.length) el.insertAdjacentHTML('afterbegin', '<div class="aviso">Aún no hay datos. Sube <b>RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx</b> en <a href="#cargar">Actualizar datos</a>.</div>');
+    } },
   // ---------------- CAJA CHICA / FONDOS POR RENDIR ----------------
   { id: 'rendiciones', grupo: 'Caja chica', titulo: 'Rendiciones', ic: 'caja', desc: 'Fondos por rendir y caja chica: líneas de gasto con su respaldo (foto o PDF) y PDF completo.',
     render: c => S.sub ? pintarRendicion(c, parseInt(S.sub, 10)) : pintarRendiciones(c) },
@@ -1449,6 +1564,11 @@ const conv = {
     if ((m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})/))) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
     return null;
   },
+  hora: v => {   // fracción de día de Excel (0,298) -> "07:09:20"
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') { const t = Math.round((v % 1) * 86400); return [t / 3600 | 0, (t % 3600) / 60 | 0, t % 60].map(x => String(x).padStart(2, '0')).join(':'); }
+    const s = String(v).trim(); return s || null;
+  },
   ts: v => {
     if (v == null || v === '') return null;
     if (typeof v === 'number') return v > 1000 && v < 80000 ? serialAISO(v).slice(0,19).replace('T', ' ') : null;
@@ -1505,6 +1625,17 @@ const MAPEOS = {
   cruce_tipos: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'Hoja1', clave: 'TIPODOC', cols: [['doc','DOC','i'],['tipo','TIPODOC','t']], filtro: r => r.doc != null },
   cruce_sii_ant: { tabla: 'cruce_sii', mesCelda: 'B1', opcional: true, archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'SII MES ANTERIOR', clave: 'RUTPROVEEDOR', cols: null, filtro: null },
   cruce_inet_ant: { tabla: 'cruce_inet', mesCelda: 'B1', opcional: true, archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'INET MES ANTERIOR', clave: 'TOTALDOCUMENTO', cols: null, filtro: null },
+  // ----- RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx (Validación MO externa) -----
+  mo_tarjeta: { archivo: 'RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx', hoja: 'CONTROL TARJETA CONTRATISTA', clave: 'TOTALCUARTEL', cols: [
+    ['n_faena','NFAENA','i'],['prestador','PRESTADORDESERVICIOS','nom'],['fecha','FECHA','d'],['predio','PREDIO','t'],['cuartel','CUARTEL','t'],
+    ['faena','FAENA','t'],['especie','ESPECIE','t'],['variedad','VARIEDAD','t'],['trabajador','TRABAJADOR','nom'],['nivel_transversal','NIVELTRANSVERSAL','t'],
+    ['forma_pago','FORMADEPAGO','t'],['un_pago','UNDEPAGO','t'],['cantidad','CANTIDAD','n'],['valor_trato','VALORTRATO','n'],['valor_jornada','VALORJORNADA','n'],
+    ['n_jornada','NJORNADA','n'],['bono','BONO','n'],['asignado','ASIGNADO','n'],['pendiente','PENDIENTE','n'],['total_cuartel','TOTALCUARTEL','n'],
+    ['nivel2','NIVEL2','t'],['cuartel_principal','CUARTELPRINCIPAL','t'],['obs_faena','OBSERVACIONFAENA','t']],
+    filtro: r => r.n_faena != null && r.fecha != null },
+  mo_asistencia: { archivo: 'RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx', hoja: 'ASISTENCIA', clave: 'COURSE', cols: [
+    ['id','ID','t'],['trabajador','EMAIL','nom'],['contratista','COURSE','nom'],['fecha','DATE','d'],['hora','TIME','hora']],
+    filtro: r => r.contratista != null && r.fecha != null },
   cruce_param: { archivo: 'CRUCE DE FACTURAS.xlsx', hoja: 'DIESEL', especial: ws => { const c = ws['B2']; return { filas: c && c.v ? [{ clave: 'mes_cruce', valor: String(c.v).trim() }] : [], faltan: c && c.v ? [] : ['B2 (mes actual)'] }; } },
 };
 
@@ -1554,6 +1685,7 @@ function pintarCargar(c) {
           <li><b>DOCUMENTOS PROVEEDORES.xlsx</b> → PDFs escaneados</li>
           <li><b>MAESTRO PROVEEDORES.xlsx</b> → Maestro, Bancos</li>
           <li><b>CRUCE DE FACTURAS.xlsx</b> → Cruce SII vs INET (hojas SII, INET, PROV, DOCUMENTOS, DIESEL)</li>
+          <li><b>RESPALDO CONTRATISTAS VS ASISTENCIA.xlsx</b> → Validación MO externa (hojas CONTROL TARJETA CONTRATISTA y ASISTENCIA)</li>
         </ol></div></div>
       <div class="card"><div class="card-h"><h3>2. Revisa y sube a Neon</h3></div><div style="padding:14px">
         <table class="t estado-carga"><thead><tr><th>Tabla</th><th>Origen</th><th class="n">Filas</th></tr></thead><tbody id="prevCarga"></tbody></table>

@@ -12,7 +12,7 @@ export default async function handler(req, res) {
     const url = new URL(req.url, 'http://x');
     const v = url.searchParams.get('v');
     // vistas de datos que este usuario puede leer (según sus páginas)
-    const vistas = new Set(a.paginas.map(p => PAGINAS[p]));
+    const vistas = new Set(a.paginas.flatMap(p => [].concat(PAGINAS[p])));
 
     const emp = await empresaActiva(req, a);
     if (v === 'estado') {

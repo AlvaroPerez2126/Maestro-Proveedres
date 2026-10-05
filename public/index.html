@@ -1478,6 +1478,7 @@ const PAGINAS = [
     cuerpo(filas, el) {
       const dd = f => f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4);
       const ordF = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+      S.asisFiltradas = filas;
       const trab = new Set(filas.map(r => r.trabajador)), dias = new Set(filas.map(r => r.fecha));
       const porDia = agrupar(filas, r => r.fecha, () => 1);
       const pico = [...porDia.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -1512,12 +1513,45 @@ function pintarFuenteAsis() {
   const cuando = f && f.ultima ? new Date(f.ultima).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }) : null;
   el.innerHTML = `<div class="fuente"><span class="dot ${gir ? 'gir' : f && f.error ? 'mal' : ''}"></span>
     <span>Fuente: <b>Google Sheets</b> · ${gir ? 'sincronizando…' : cuando ? `última lectura <b>${cuando}</b>${f.filas != null ? ` · ${nf.format(f.filas)} registros` : ''}` : 'sin sincronizar'}</span>
+    <button class="btn prim" id="asXls" title="Descarga en Excel lo que está filtrado">⤓ Descargar Excel</button>
     ${f && f.url ? `<button class="btn" id="asSync" ${gir ? 'disabled' : ''}>⟳ Sincronizar ahora</button>` : ''}
     ${admin ? `<input id="asUrl" type="url" placeholder="Pega aquí el enlace de la planilla de Google Sheets" value="${esc((f && f.url) || '')}"><button class="btn prim" id="asGuardar">Guardar enlace</button>` : ''}
     ${!f || !f.url ? `<span>${admin ? '' : 'Un administrador debe configurar el enlace de la planilla.'}</span>` : ''}
     ${f && f.error ? `<span class="err">⚠ ${esc(f.error)}</span>` : ''}</div>`;
   const bs = $('#asSync'); if (bs) bs.onclick = () => syncAsistencia(true);
+  $('#asXls').onclick = descargarAsistencia;
   const bg = $('#asGuardar'); if (bg) bg.onclick = () => syncAsistencia(true, $('#asUrl').value.trim());
+}
+// Excel con lo filtrado: hoja Detalle (una fila por trabajador y día) + hoja Resumen (días trabajados por persona)
+function descargarAsistencia() {
+  const filas = [...(S.asisFiltradas || [])].sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0) || String(a.trabajador).localeCompare(String(b.trabajador), 'es'));
+  if (!filas.length) return aviso('No hay datos para los filtros elegidos.', true);
+  if (!window.XLSX) return aviso('El lector de Excel aún no carga, intenta en unos segundos.', true);
+  const serial = f => Date.UTC(+f.slice(0, 4), +f.slice(5, 7) - 1, +f.slice(8, 10)) / 864e5 + 25569;
+  const cFecha = f => f ? { t: 'n', v: serial(f), z: 'dd-mm-yyyy' } : null;
+  const hoja = (enc, datos, anchos) => {
+    const ws = XLSX.utils.aoa_to_sheet([enc, ...datos]);
+    ws['!cols'] = anchos.map(w => ({ wch: w }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: datos.length, c: enc.length - 1 } }) };
+    return ws;
+  };
+  const det = filas.map(r => [r.trabajador, r.rut || '', r.contratista, cFecha(r.fecha), r.marcas]);
+  const g = new Map();
+  for (const r of filas) {
+    const k = r.trabajador + '|' + r.contratista; const o = g.get(k) || { t: r.trabajador, rut: r.rut, c: r.contratista, dias: new Set() };
+    o.dias.add(r.fecha); if (!o.rut && r.rut) o.rut = r.rut; g.set(k, o);
+  }
+  const res = [...g.values()].sort((a, b) => String(a.c).localeCompare(String(b.c), 'es') || String(a.t).localeCompare(String(b.t), 'es')).map(o => {
+    const d = [...o.dias].sort();
+    return [o.t, o.rut || '', o.c, d.length, cFecha(d[0]), cFecha(d[d.length - 1]), d.map(x => x.slice(8, 10) + '/' + x.slice(5, 7)).join(', ')];
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, hoja(['Nombre', 'RUT', 'Contratista', 'Fecha trabajada', 'Marcas'], det, [36, 14, 34, 15, 8]), 'Detalle');
+  XLSX.utils.book_append_sheet(wb, hoja(['Nombre', 'RUT', 'Contratista', 'Días trabajados', 'Primera fecha', 'Última fecha', 'Fechas trabajadas'], res, [36, 14, 34, 14, 13, 13, 80]), 'Resumen');
+  const fs = filas.map(r => r.fecha).sort();
+  const rango = fs[0] === fs[fs.length - 1] ? fecha(fs[0]) : `${fecha(fs[0])} al ${fecha(fs[fs.length - 1])}`;
+  XLSX.writeFile(wb, `Asistencia contratistas ${rango}.xlsx`);
+  aviso(`Excel descargado: ${nf.format(det.length)} filas`);
 }
 async function syncAsistencia(forzar = false, url = null) {
   if (S.asisSync) return;

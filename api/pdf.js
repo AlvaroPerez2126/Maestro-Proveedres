@@ -13,7 +13,7 @@ import { estampar } from '../lib/timbre.js';
 // DELETE /api/pdf?rut&folio&tipo&clase   -> elimina (quien lo subió o un administrador)
 export const config = { api: { bodyParser: false } };
 const MAX = 4 * 1024 * 1024; // 4 MB (Vercel acepta hasta 4,5 MB por solicitud)
-const CRUCE = ['cruce', 'atrasos', 'rapido'];
+const CRUCE = ['cruce', 'atrasos', 'rapido', 'porentregar'];
 const NOMBRE = c => c === 'factura' ? 'factura' : 'orden de compra';
 const MAX_OC = 20;
 const esOC = c => /^oc([2-9]|1[0-9]|20)?$/.test(c);

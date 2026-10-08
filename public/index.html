@@ -222,6 +222,15 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
 .mesc{font-size:11.5px;font-weight:600;color:var(--verde-osc);background:var(--verde-suave);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .falta{color:#A0A89C;font-size:11.5px;white-space:nowrap}
 .ocs{flex-wrap:wrap;max-width:230px} .ocit{display:inline-flex;gap:2px} .ocn{font-size:10.5px;color:var(--txt2);font-weight:600}
+.pdfb.ent{color:var(--txt2);padding:2px 6px} .pdfb.entp{color:#8A5A00;background:var(--ambar-claro);border-color:#F0D49A} .pdfb.entp.venc{color:#fff;background:var(--rojo);border-color:var(--rojo)}
+.pdfb.entok{color:var(--verde-osc);background:var(--verde-suave);border-color:#CFE3C1}
+.modal.chico{align-items:center} .ent-box{width:min(560px,100%)} .ent-cuerpo{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.ent-cuerpo label{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:600;color:var(--txt2)}
+.ent-cuerpo textarea,.ent-cuerpo input{font:inherit;font-size:13px;font-weight:400;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;color:var(--txt)}
+.ent-info{margin:0;font-size:12.5px;color:var(--txt2)} .ent-pie{display:flex;gap:8px;align-items:center;padding:12px 16px;border-top:1px solid var(--borde);flex-wrap:wrap}
+.btn.verde{background:var(--verde-osc);border-color:var(--verde-osc);color:#fff} .btn.conf{background:var(--rojo);border-color:var(--rojo);color:#fff}
+.fvenc{color:var(--rojo);font-weight:700} .arr{color:var(--ambar);font-weight:700} .okc{color:var(--verde-osc);font-weight:600} .pdc{color:var(--rojo);font-weight:600}
+.ent-ayuda{margin-bottom:12px}
 .pdfb.del{color:var(--txt2)} .pdfb.del:hover,.pdfb.conf{color:#fff;background:var(--rojo);border-color:var(--rojo)}
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:#1F2A1A;color:#fff;padding:10px 16px;border-radius:9px;opacity:0;transition:.2s;z-index:100;pointer-events:none;max-width:90vw}
 #toast.on{opacity:1;transform:translateX(-50%)} #toast.err{background:var(--rojo)}
@@ -392,6 +401,7 @@ const IC = {
   caja:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M12 11v3"/></svg>',
   firma:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-6 5-9 7-9 2 0-1 8 1 8s3-4 5-4 1 3 3 3"/><path d="M3 21h18"/></svg>',
   edificio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h3a1 1 0 0 1 1 1v11M2 21h20M8 7h4M8 11h4M8 15h4"/></svg>',
+  camion:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/></svg>',
   obrero:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M7.5 7a4.5 4.5 0 0 1 9 0M6 7h12M5 21a7 7 0 0 1 14 0M10 16l2 2 3-3.5"/></svg>',
   flecha:'<svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
 };
@@ -795,7 +805,56 @@ const COLS_CRUCE = () => [
   { t: 'Factura', v: r => r.pdf_nombre || primerLink(r.pdf), html: r => celdaPdf(r, 'factura') },
   { t: 'OC', v: r => ocLista(r).map(o => o.n).join(' | '), html: r => celdaOC(r) },
   { t: 'Factura + OC', v: r => r.pdf_nombre && r.oc_nombre ? 'Sí' : '', html: r => celdaUnion(r) },
+  { t: 'Entrega', v: r => estadoEntrega(r), html: r => celdaEntrega(r) },
 ];
+// Facturas pendientes por entregar (el producto aún no llega): marca manual por documento
+const estadoEntrega = r => r.ent_estado === 'pendiente' ? 'Por entregar' : r.ent_estado === 'entregado' ? 'Llegó' : 'Sin marca';
+function celdaEntrega(r) {
+  const k = `data-rut="${esc(r.rut)}" data-folio="${r.folio}" data-tipo="${r.tipo_doc ?? 0}"`;
+  if (r.ent_estado === 'pendiente') {
+    const venc = r.ent_fecha_est && r.ent_fecha_est < hoyISO();
+    return `<button class="pdfb entp ${venc ? 'venc' : ''}" data-acc="entrega" ${k} title="${esc('Pendiente por entregar' + (r.ent_obs ? ': ' + r.ent_obs : '') + (r.ent_por ? ' · marcó ' + r.ent_por : '') + ' · clic para editar')}">📦 ${r.ent_fecha_est ? esc(fecha(r.ent_fecha_est).slice(0, 5)) : 'Por entregar'}</button>`;
+  }
+  if (r.ent_estado === 'entregado') return `<button class="pdfb entok" data-acc="entrega" ${k} title="${esc('Llegó' + (r.ent_llego ? ' el ' + new Date(r.ent_llego).toLocaleDateString('es-CL') : '') + (r.ent_llego_por ? ' · ' + r.ent_llego_por : ''))}">✓ Llegó</button>`;
+  return `<button class="pdfb ent" data-acc="entrega" ${k} title="Marcar como pendiente por entregar (el producto aún no llega)">📦</button>`;
+}
+function abrirEntrega(r) {
+  const m = document.createElement('div'); m.className = 'modal chico';
+  const pend = r.ent_estado === 'pendiente', lleg = r.ent_estado === 'entregado';
+  m.innerHTML = `<div class="mbox ent-box"><div class="mhead"><div class="mtit"><b>📦 Pendiente por entregar</b><span>${esc(r.razon_social || r.rut)} · ${esc(r.doc || '')} ${r.folio} · ${clp(r.monto_total)} · ${esc(mesLabel(r.mes) || fecha(r.fecha_docto))}</span></div></div>
+    <div class="ent-cuerpo">
+      ${r.ent_estado ? `<p class="ent-info">${pend ? 'Marcada' : 'Llegó'}${pend ? (r.ent_por ? ' por <b>' + esc(r.ent_por) + '</b>' : '') + (r.ent_fecha ? ' el ' + new Date(r.ent_fecha).toLocaleDateString('es-CL') : '') : (r.ent_llego_por ? ' · registrado por <b>' + esc(r.ent_llego_por) + '</b>' : '') + (r.ent_llego ? ' el ' + new Date(r.ent_llego).toLocaleDateString('es-CL') : '')}</p>` : '<p class="ent-info">La factura queda en <b>Pendientes por entregar</b> hasta que marques que el producto llegó. Se mantiene aunque subas un cruce nuevo.</p>'}
+      <label>Observación<textarea id="entObs" rows="3" maxlength="300" placeholder="Ej.: insumo importado, llega con la guía de despacho">${esc(r.ent_obs || '')}</textarea></label>
+      <label>Fecha estimada de llegada<input type="date" id="entFecha" value="${r.ent_fecha_est ? String(r.ent_fecha_est).slice(0, 10) : ''}"></label>
+    </div>
+    <div class="ent-pie">
+      ${r.ent_estado ? '<button class="btn" data-a="quitar">Quitar marca</button>' : ''}
+      <span style="flex:1"></span>
+      <button class="btn" data-a="cancelar">Cancelar</button>
+      ${pend ? '<button class="btn verde" data-a="llego">✓ Llegó el producto</button>' : ''}
+      ${lleg ? '<button class="btn" data-a="reabrir">Volver a pendiente</button>' : ''}
+      <button class="btn prim" data-a="marcar">${r.ent_estado ? 'Guardar' : 'Marcar por entregar'}</button>
+    </div></div>`;
+  document.body.appendChild(m);
+  const cerrar = () => m.remove();
+  m.addEventListener('click', e => { if (e.target === m) cerrar(); });
+  m.querySelector('[data-a=cancelar]').onclick = cerrar;
+  m.querySelectorAll('[data-a]:not([data-a=cancelar])').forEach(b => b.onclick = async () => {
+    const accion = b.dataset.a;
+    if (accion === 'quitar' && b.dataset.conf !== '1') { b.dataset.conf = '1'; b.textContent = '¿Quitar la marca?'; b.classList.add('conf'); return; }
+    m.querySelectorAll('button').forEach(x => x.disabled = true);
+    try {
+      const j = await api(`/api/entrega?rut=${encodeURIComponent(r.rut)}&folio=${r.folio}&tipo=${r.tipo_doc ?? 0}`, { method: 'POST', body: JSON.stringify({ accion, obs: $('#entObs').value, fecha_estimada: $('#entFecha').value }) });
+      const e = j.entrega;
+      Object.assign(r, e ? { ent_estado: e.estado, ent_obs: e.obs, ent_fecha_est: e.fecha_estimada, ent_por: e.marcado_por, ent_fecha: e.marcado, ent_llego_por: e.entregado_por, ent_llego: e.entregado }
+        : { ent_estado: null, ent_obs: null, ent_fecha_est: null, ent_por: null, ent_fecha: null, ent_llego_por: null, ent_llego: null });
+      cerrar();
+      const p = PAGINAS.find(x => x.id === S.pagina); if (p && p.src) { const fl = fuente(p); pintarSlicers(p, fl); pintarCuerpo(p, fl); }
+      aviso({ marcar: r.ent_estado === 'pendiente' ? 'Factura marcada como pendiente por entregar.' : 'Guardado.', llego: 'Registrado: el producto llegó.', reabrir: 'Factura de nuevo pendiente por entregar.', quitar: 'Marca quitada.' }[accion]);
+    } catch (err) { aviso(err.message, true); m.querySelectorAll('button').forEach(x => x.disabled = false); }
+  });
+  setTimeout(() => $('#entObs').focus(), 50);
+}
 const estadoDocs = r => r.pdf_nombre && r.oc_nombre ? 'Factura + OC' : r.pdf_nombre ? 'Solo factura' : r.oc_nombre ? 'Solo OC' : 'Sin documentos';
 // Celda PDF del cruce: ver / eliminar el PDF subido, o subir uno nuevo
 function celdaPdf(r, clase = 'factura') {
@@ -853,6 +912,7 @@ document.addEventListener('click', async e => {
     } catch (err) { if (w) w.close(); aviso(err.message, true); }
   }
   if (b.dataset.acc === 'timbre') { if (fila) abrirTimbre(fila); return; }
+  if (b.dataset.acc === 'entrega') { if (fila) abrirEntrega(fila); return; }
   if (b.dataset.acc === 'bajar') {
     b.disabled = true;
     try {
@@ -1354,6 +1414,7 @@ const PAGINAS = [
       F.chips('doc', 'Tipo doc.', r => r.doc),
       F.chips('docs', 'Documentos', estadoDocs),
       F.chips('timbre', 'Timbre', r => !r.pdf_nombre ? 'Sin factura' : r.timbre_por ? 'Timbrada' : 'Sin timbre'),
+      F.chips('entrega', 'Entrega', estadoEntrega),
     ],
     cuerpo(filas, el) {
       const pend = filas.filter(r => r.estado === 'Pendiente');
@@ -1415,6 +1476,44 @@ const PAGINAS = [
         { l: 'Monto total', v: clp(suma(filas, r => r.monto_total)) },
       ]) + '<div id="t1"></div>';
       tabla($('#t1'), { titulo: 'Entregar rápido', filas, orden: 10, dir: 1, alto: 620, cols: COLS_CRUCE() });
+    } },
+  { id: 'porentregar', grupo: 'Cruce de facturas', titulo: 'Pendientes por entregar', ic: 'camion', desc: 'Facturas recibidas cuyo producto aún no llega: pasan del mes anterior al mes en curso hasta que se registra la llegada.',
+    src: d => d.cruce.filter(r => r.ent_estado), defaults: { ent: ['Por entregar'] },
+    filtros: [
+      F.prov(r => r.razon_social, 'Razón social'),
+      F.chips('ent', 'Estado', estadoEntrega),
+      F.chips('mesc', 'Mes factura', r => r.mes || null, { fmt: v => v === '(En blanco)' ? 'Sin mes' : mesLabel(v), desc: true }),
+      F.chips('enc', 'Encargado', r => r.encargado),
+      F.chips('estado', 'Validación INET', r => r.estado),
+    ],
+    cuerpo(filas, el) {
+      const hoy = hoyISO();
+      const mesAct = (S.datos.cruce.map(r => r.mes).filter(Boolean).sort().pop()) || null;
+      const pend = filas.filter(r => r.ent_estado === 'pendiente');
+      const ant = pend.filter(r => r.mes && mesAct && r.mes < mesAct);
+      const venc = pend.filter(r => r.ent_fecha_est && r.ent_fecha_est < hoy);
+      const lleg = S.datos.cruce.filter(r => r.ent_estado === 'entregado' && r.ent_llego && String(r.ent_llego).slice(0, 7) === hoy.slice(0, 7));
+      el.innerHTML = kpis([
+        { l: 'Por entregar', v: nf.format(pend.length), c: pend.length ? 'rojo' : 'verde', s: clp(suma(pend, r => r.monto_total)) },
+        { l: 'Vienen de meses anteriores', v: nf.format(ant.length), s: ant.length ? clp(suma(ant, r => r.monto_total)) + ' pasan al mes en curso' : 'mes en curso: ' + esc(mesLabel(mesAct) || '–') },
+        { l: 'Fecha estimada vencida', v: nf.format(venc.length), c: venc.length ? 'rojo' : 'verde', s: 'pendientes con fecha de llegada ya pasada' },
+        { l: 'Llegaron este mes', v: nf.format(lleg.length), c: 'verde', s: clp(suma(lleg, r => r.monto_total)) },
+      ]) + `<div class="aviso ent-ayuda">Para agregar una factura: en <a href="#cruce">Cruce facturas</a> presiona <b>📦</b> en la columna <b>Entrega</b>. Aquí presiona la marca para editar la nota o registrar que el producto llegó.</div><div id="t1"></div>`;
+      tabla($('#t1'), { titulo: 'Facturas pendientes por entregar', filas, orden: 4, dir: 1, alto: 620, cols: [
+        { t: 'RUT', v: r => r.rut }, { t: 'Razón social', v: r => r.razon_social, max: 190 }, { t: 'DOC', v: r => r.doc },
+        { t: 'Folio', v: r => r.folio }, { t: 'Fecha docto', v: r => r.fecha_docto, f: 'fecha' },
+        { t: 'Mes', v: r => r.mes, html: r => `<span class="mesc">${esc(mesCorto(r.mes))}</span>${r.mes && mesAct && r.mes < mesAct && r.ent_estado === 'pendiente' ? ' <span class="arr" title="Viene de un mes anterior">↪</span>' : ''}` },
+        { t: 'Total', v: r => r.monto_total, f: 'clp', sum: true },
+        { t: 'Neto', v: r => r.monto_neto, f: 'clp', sum: true, soloCSV: true },
+        { t: 'Llegada estimada', v: r => r.ent_fecha_est, f: 'fecha', html: r => r.ent_fecha_est ? `<span class="${r.ent_estado === 'pendiente' && r.ent_fecha_est < hoy ? 'fvenc' : ''}">${fecha(r.ent_fecha_est)}</span>` : '<span class="sinpdf">—</span>' },
+        { t: 'Observación', v: r => r.ent_obs, max: 220 },
+        { t: 'Marcó', v: r => r.ent_por, html: r => `${esc(r.ent_por || '')}${r.ent_fecha ? ` <small style="color:var(--txt2)">${new Date(r.ent_fecha).toLocaleDateString('es-CL')}</small>` : ''}` },
+        { t: 'INET', v: r => r.estado, html: r => `<span class="${r.estado === 'Ingresado' ? 'okc' : 'pdc'}">${r.estado}</span>` },
+        { t: 'Encargado', v: r => r.encargado, soloCSV: true },
+        { t: 'Factura', v: r => r.pdf_nombre || primerLink(r.pdf), html: r => celdaPdf(r, 'factura') },
+        { t: 'OC', v: r => ocLista(r).map(o => o.n).join(' | '), html: r => celdaOC(r) },
+        { t: 'Entrega', v: r => estadoEntrega(r), html: r => celdaEntrega(r) },
+      ] });
     } },
   // ---------------- VALIDACIÓN MO EXTERNA (ASISTENCIA VS AGROSMART) ----------------
   { id: 'mo', grupo: 'MO externa', titulo: 'Validación MO externa', ic: 'obrero', desc: 'Asistencia real vs ingreso en Agrosmart por contratista y día, promedio por persona y costo MO.',

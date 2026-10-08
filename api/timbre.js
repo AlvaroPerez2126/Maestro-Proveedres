@@ -5,7 +5,7 @@ import { asegurarEsquema } from '../lib/schema.js';
 // GET    /api/timbre?rut&folio&tipo  -> { timbre }  (o null)
 // POST   /api/timbre?rut&folio&tipo  { pagina, x, y, ancho, campos } -> crea o sobrescribe
 // DELETE /api/timbre?rut&folio&tipo  -> quita el timbre (quien timbró o un administrador)
-const CRUCE = ['cruce', 'atrasos', 'rapido'];
+const CRUCE = ['cruce', 'atrasos', 'rapido', 'porentregar'];
 const CAMPOS = ['fecha', 'bodega', 'responsable', 'vb', 'digitado', 'fecha_dig', 'obs', 'obs2'];
 const num = (v, min, max, def) => { const n = Number(v); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : def; };
 

@@ -319,6 +319,32 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
   .kpi .v{font-size:17px}
   .kpis{grid-template-columns:1fr 1fr}
 }
+/* ---------- Proceso Contratistas ---------- */
+.pcb{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+.pcb.g{background:var(--verde-claro);color:var(--verde-osc)} .pcb.r{background:var(--rojo-claro);color:var(--rojo)} .pcb.y{background:var(--ambar-claro);color:var(--ambar)}
+.pcb.n{background:var(--panel2);color:var(--txt2)} .pcb.b{background:#E3EEFB;color:#1565C0}
+:root[data-theme="dark"] .pcb.b{background:#18304D;color:#7DB3F0}
+.pc-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:12px 14px;border-bottom:1px solid var(--borde)} .pc-tools .buscar{max-width:320px;flex:1;min-width:200px}
+.pc-t td{vertical-align:middle} .pc-t td:first-child{white-space:normal;max-width:none;min-width:220px}
+.pc-tools .buscar{padding:7px 10px;border:1px solid var(--borde);border-radius:8px;background:var(--panel);color:var(--txt)} .pc-t small{color:var(--txt2)} .pc-acc{white-space:nowrap} .pc-acc .pdfb{padding:3px 6px;margin-right:2px}
+.pc-pb{height:8px;background:var(--linea);border-radius:9px;overflow:hidden;min-width:80px;margin-bottom:2px} .pc-pb i{display:block;height:100%;background:var(--verde)} .pc-pb.grande{height:14px;margin:8px 0}
+.pc-pie{color:var(--txt2);font-size:11.5px;margin-top:10px;text-align:right}
+.pc-barra{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px} .pc-cargo{width:260px;padding:7px 10px;border:1px solid var(--borde);border-radius:8px;background:var(--panel)}
+.pc-head{display:flex;flex-direction:row;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;padding:16px;margin-bottom:12px} .pc-head h2{margin:4px 0}
+.pc-pct{font-size:26px;font-weight:700;margin-top:6px}
+.pc-sec{padding:16px;margin-bottom:12px} .pc-sec h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.03em;color:var(--verde-osc)}
+.pc-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.btn.pc-ok{color:var(--verde-osc);font-weight:700} .btn.pc-no{color:var(--rojo);font-weight:700}
+.pc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px} .pc-l{color:var(--txt2);font-size:11.5px}
+.pc-dr{display:grid;grid-template-columns:34px 1fr auto;gap:12px;padding:12px 0;border-bottom:1px solid var(--linea)} .pc-dr:last-child{border-bottom:0}
+.pc-dl{width:30px;height:30px;border-radius:50%;background:var(--verde);color:#fff;display:grid;place-items:center;font-weight:700}
+.pc-mu{color:var(--txt2);font-size:12px} .pc-ob{background:var(--panel2);padding:5px 9px;border-radius:6px;margin-top:5px;font-size:12px}
+.pc-da{text-align:right;max-width:360px;display:flex;flex-direction:column;gap:6px;align-items:flex-end} .pc-da .btn{padding:5px 9px;font-size:12px;margin-left:3px}
+.pc-ta{width:100%;font:inherit;padding:8px 10px;border:1px solid var(--borde);border-radius:8px;background:var(--panel);color:var(--txt)}
+.pc-mbox .ent-cuerpo .pc-grid label{display:flex;flex-direction:column;gap:5px} .pc-mb{padding:14px 16px} .pc-err{background:var(--rojo-claro);color:var(--rojo);border-color:transparent;font-weight:600}
+#btnRecargar .sol-movil{display:none}
+@media(max-width:820px){#top{gap:6px;padding:10px 12px} #btnRecargar .tx{display:none} #btnRecargar .sol-movil{display:inline} .selemp select{max-width:120px} #top .btn{padding:7px 9px}}
+@media(max-width:860px){.pc-cargo{width:100%} .pc-dr{grid-template-columns:30px 1fr}.pc-da{grid-column:1/-1;text-align:left;align-items:flex-start;max-width:none}}
 /* ---------- Badge del menú (pendientes) ---------- */
 #nav nav a .bdg{margin-left:auto;background:var(--rojo);color:#fff;border-radius:999px;font-size:11px;font-weight:700;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;line-height:1}
 #nav nav a .bdg.amb{background:var(--ambar);color:#241700}
@@ -374,7 +400,7 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
       <span class="act-info" id="actInfo"></span>
       <label class="selemp" id="selEmpWrap" hidden><span>Empresa</span><select id="selEmp"></select></label>
       <button class="btn tema" id="btnTema" title="Modo día / noche" aria-label="Cambiar a modo día o noche"></button>
-      <button class="btn" id="btnRecargar" title="Volver a leer los datos desde Neon">Recargar</button>
+      <button class="btn" id="btnRecargar" title="Volver a leer los datos"><span class="sol-movil">⟳</span><span class="tx">Recargar</span></button>
       <button class="btn" id="btnSalir" title="Cerrar sesión">Salir</button>
     </header>
     <div id="contenido"></div>
@@ -428,6 +454,7 @@ const IC = {
   caja:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M12 11v3"/></svg>',
   firma:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-6 5-9 7-9 2 0-1 8 1 8s3-4 5-4 1 3 3 3"/><path d="M3 21h18"/></svg>',
   edificio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h3a1 1 0 0 1 1 1v11M2 21h20M8 7h4M8 11h4M8 15h4"/></svg>',
+  carpeta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13l2 2 4-4"/></svg>',
   camion:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/></svg>',
   obrero:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M7.5 7a4.5 4.5 0 0 1 9 0M6 7h12M5 21a7 7 0 0 1 14 0M10 16l2 2 3-3.5"/></svg>',
   flecha:'<svg viewBox="0 0 12 12"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
@@ -1643,6 +1670,9 @@ const PAGINAS = [
         niveles: [{ t: 'Contratista', v: r => r.contratista }, { t: 'Nombre', v: r => r.trabajador }], col });
       if (!S.datos.asiscontr.length && !(S.asisFuente && S.asisFuente.url)) el.querySelector('#as1').innerHTML = '';
     } },
+  // ---------------- PROCESO CONTRATISTAS (precalificación) ----------------
+  { id: 'pcontratistas', grupo: 'Contratistas', titulo: 'Proceso Contratistas', ic: 'carpeta', desc: 'Precalificación de contratistas: documentos de subcontratación y prevención de riesgos, revisión, reporte y correo de resultado.',
+    render: c => !S.estado ? null : S.sub ? pintarPC(c, parseInt(S.sub, 10)) : pintarPCLista(c) },
   // ---------------- CAJA CHICA / FONDOS POR RENDIR ----------------
   { id: 'rendiciones', grupo: 'Caja chica', titulo: 'Rendiciones', ic: 'caja', desc: 'Fondos por rendir y caja chica: líneas de gasto con su respaldo (foto o PDF) y PDF completo.',
     render: c => S.sub ? pintarRendicion(c, parseInt(S.sub, 10)) : pintarRendiciones(c) },
@@ -2057,6 +2087,231 @@ function leerPeso(inp) { const d = inp.value.replace(/\D/g, ''); inp.value = d ?
 const mesCorto = p => /^\d{4}-\d{2}$/.test(p || '') ? `${MES3[+p.slice(5) - 1]} ${p.slice(2, 4)}` : '—';
 const mesLabel = p => /^\d{4}-\d{2}$/.test(p || '') ? `${MESES[+p.slice(5) - 1].toUpperCase()} ${p.slice(0, 4)}` : (p || 'Sin mes');
 const totLinea = l => (l.cantidad === '' || l.cantidad == null ? 1 : +l.cantidad || 0) * (+l.subtotal || 0);
+
+/* =====================================================================
+   Proceso Contratistas: precalificación documental (MF-RG-PR-38 · Rev. 007)
+   ===================================================================== */
+const PC_SUB = [['A','Certificado de deuda fiscal vigente (Sin deuda) - Emitido por Tesorería'],['B','Certificado de antecedentes laborales y previsionales F-30 - Emitido por la Dirección del Trabajo'],['C','Certificado de Dicom (empresarial)'],['D','Carpeta Tributaria (últimos 12 meses)'],['E','Rol Único Tributario + Email y número de contacto del representante legal'],['F','Comprobante de cuenta corriente a nombre de la razón social por la cual factura']];
+const PC_PRE = [['A','Certificado de afiliación a organismo administrador - ACHS, ISL, IST o Mutual'],['B','Reglamento interno de orden, higiene y seguridad (actualizado)'],['C','Registro de presentación del reglamento interno ante la Inspección del Trabajo y Seremi de Salud (actualizado)'],['D','Matriz de riesgos de las actividades que desarrolla (Amarra, Poda, Cosecha, Uso de escalera, Mantención estructura, Instalación malla sombra, Control de malezas, Uso de motosierra, otros según corresponda)'],['E','Registro de Información de Riesgos Laborales (IRL) actualizado'],['F','Registro de curso (certificado o diploma) de primeros auxilios de persona trabajadora permanente (al menos una persona)'],['G','Acta de constitución de comité paritario (empresas con más de 25 personas trabajadoras) – Si corresponde, o Representante de seguridad y salud laboral de la empresa (Carta tipo en anexo 1)']];
+const PC_CS = 'SUBCONTRATACIÓN', PC_CP = 'PREVENCIÓN DE RIESGOS';
+const PC_DOCS = [...PC_SUB.map(([l, n]) => ({ k: 'S' + l, l, n, c: PC_CS })), ...PC_PRE.map(([l, n]) => ({ k: 'P' + l, l, n, c: PC_CP }))];
+const PC_DM = Object.fromEntries(PC_DOCS.map(d => [d.k, d]));
+const PC_VIGENCIA = ['SA', 'SB', 'SC', 'PA'];   // certificados que vencen: aviso a los 90 días
+const PC_CL = { PENDIENTE: 'y', 'PRECALIFICACIÓN PENDIENTE': 'y', CUMPLE: 'g', APROBADO: 'g', 'NO CUMPLE': 'r', OBSERVADO: 'r', RECHAZADO: 'r', 'NO APLICA': 'n', 'EN REVISIÓN': 'b' };
+const PC_IC = { PENDIENTE: '🟡', CUMPLE: '🟢', 'NO CUMPLE': '🔴', 'NO APLICA': '⚪' };
+const PC_FL = [['todos', 'Todos', null], ['pend', 'Pendientes', 'PRECALIFICACIÓN PENDIENTE'], ['rev', 'En revisión', 'EN REVISIÓN'], ['apr', 'Aprobados', 'APROBADO'], ['obs', 'Observados', 'OBSERVADO'], ['rech', 'Rechazados', 'RECHAZADO']];
+const pcB = e => `<span class="pcb ${PC_CL[e] || 'n'}">${PC_IC[e] || ''} ${esc(e)}</span>`;
+const pcF = s => s ? new Date(String(s).length === 10 ? s + 'T12:00:00' : s).toLocaleDateString('es-CL') : '—';
+const pcDoc = (c, k) => (c.docs || []).find(d => d.k === k) || { k, estado: 'PENDIENTE' };
+function pcCalc(c) {
+  const v = PC_DOCS.map(d => pcDoc(c, d.k)), n = v.length, cuenta = e => v.filter(d => d.estado === e).length;
+  const cu = cuenta('CUMPLE'), nc = cuenta('NO CUMPLE'), pe = cuenta('PENDIENTE'), na = cuenta('NO APLICA');
+  const est = c.rech ? 'RECHAZADO' : nc ? 'OBSERVADO' : !pe ? 'APROBADO' : v.some(d => d.estado !== 'PENDIENTE' || d.archivo_nombre) ? 'EN REVISIÓN' : 'PRECALIFICACIÓN PENDIENTE';
+  return { cu, nc, pe, na, n, rev: n - pe, pct: Math.round((cu + na) / n * 100), est };
+}
+const pcUlt = c => (c.docs || []).reduce((m, d) => d.revisado && d.revisado > m ? d.revisado : m, '');
+const pcPend = c => PC_DOCS.filter(d => ['PENDIENTE', 'NO CUMPLE'].includes(pcDoc(c, d.k).estado));
+const pcRevisor = () => ({ n: (S.estado && (S.estado.nombre || S.estado.usuario)) || 'Encargado de Contratistas', c: ss.get('pc_cargo') || (() => { try { return localStorage.getItem('pc_cargo'); } catch (e) { return null; } })() || 'Encargado de Adquisiciones y Servicios' });
+const pcApi = (accion, cuerpo, extra = '') => api(`/api/contratistas?accion=${accion}${extra}`, { method: 'POST', body: JSON.stringify(cuerpo || {}) });
+if (!S.pc) S.pc = { flt: 'todos', q: '', srt: { k: 'nombre', d: 1 }, lista: [] };
+
+function pcModal(html, ancho = 520) {
+  const m = document.createElement('div'); m.className = 'modal chico'; m.id = 'pcModal';
+  m.innerHTML = `<div class="mbox pc-mbox" style="width:min(${ancho}px,100%)">${html}</div>`;
+  m.addEventListener('click', e => { if (e.target === m || e.target.closest('[data-cerrar]')) m.remove(); });
+  document.body.appendChild(m); return m;
+}
+
+async function pintarPCLista(el) {
+  el.innerHTML = '<div class="cargando"><div class="spin"></div><div>Cargando contratistas…</div></div>';
+  try { S.pc.lista = (await api('/api/contratistas?accion=lista')).contratistas; } catch (e) { el.innerHTML = `<div class="aviso">${esc(e.message)}</div>`; return; }
+  pcDash(el);
+}
+function pcDash(el) {
+  const L0 = S.pc.lista, cnt = e => L0.filter(c => pcCalc(c).est === e).length;
+  const ft = PC_FL.find(f => f[0] === S.pc.flt)[2], q = S.pc.q.toLowerCase(), so = S.pc.srt;
+  const val = c => ({ nombre: (c.nombre || '').toLowerCase(), rut: c.rut || '', contrato: c.contrato || '', pct: pcCalc(c).pct, est: pcCalc(c).est, ult: pcUlt(c) })[so.k];
+  const L = L0.filter(c => (!ft || pcCalc(c).est === ft) && [c.nombre, c.rut, c.rep, c.contrato].join(' ').toLowerCase().includes(q)).sort((a, b) => (val(a) > val(b) ? 1 : val(a) < val(b) ? -1 : 0) * so.d);
+  const th = (k, t) => `<th data-o="${k}">${t}${so.k === k ? (so.d > 0 ? ' ▲' : ' ▼') : ''}</th>`;
+  el.innerHTML = kpis([
+    { l: 'Total contratistas', v: nf.format(L0.length) },
+    { l: 'Precalificación pendiente', v: nf.format(cnt('PRECALIFICACIÓN PENDIENTE')) },
+    { l: 'En revisión', v: nf.format(cnt('EN REVISIÓN')) },
+    { l: 'Aprobados', v: nf.format(cnt('APROBADO')), c: 'verde' },
+    { l: 'Observados', v: nf.format(cnt('OBSERVADO')), c: cnt('OBSERVADO') ? 'rojo' : '' },
+    { l: 'Rechazados', v: nf.format(cnt('RECHAZADO')), c: cnt('RECHAZADO') ? 'rojo' : '' },
+  ]) + `<div class="card"><div class="pc-tools"><input class="buscar" id="pcQ" type="search" placeholder="Buscar empresa, RUT, representante o contrato" value="${esc(S.pc.q)}">
+      ${PC_FL.map(f => `<button class="chip ${S.pc.flt === f[0] ? 'on' : ''}" data-f="${f[0]}">${f[1]}</button>`).join('')}
+      <span style="flex:1"></span><button class="btn prim" id="pcNuevo">＋ Nuevo contratista</button></div>
+    <div class="card-b"><table class="t pc-t"><thead><tr>${th('nombre', 'Empresa')}${th('rut', 'RUT')}${th('contrato', 'Contrato')}${th('pct', 'Cumplimiento')}${th('est', 'Estado')}${th('ult', 'Última revisión')}<th>Acciones</th></tr></thead><tbody>
+    ${L.map(c => { const r = pcCalc(c); return `<tr data-id="${c.id}" class="clic"><td><b>${esc(c.nombre)}</b>${r.pe ? ` <span class="pcb y">⚠ ${r.pe} pend.</span>` : ''}${r.nc ? ` <span class="pcb r">${r.nc} obs.</span>` : ''}</td>
+      <td>${esc(c.rut)}</td><td>${esc(c.contrato)}</td><td><div class="pc-pb"><i style="width:${r.pct}%"></i></div><small>${r.pct}% · ${r.rev}/${r.n}</small></td><td>${pcB(r.est)}</td><td>${pcF(pcUlt(c))}</td>
+      <td class="pc-acc"><button class="pdfb" data-a="ver" title="Ver y revisar">👁</button><button class="pdfb" data-a="editar" title="Editar">✏</button><button class="pdfb" data-a="correo" title="Correo">📧</button><button class="pdfb" data-a="reporte" title="Reporte">📄</button><button class="pdfb" data-a="duplicar" title="Duplicar">⧉</button><button class="pdfb del" data-a="eliminar" title="Eliminar">🗑</button></td></tr>`; }).join('') || `<tr><td colspan="7" class="vacio">${L0.length ? 'Sin resultados.' : 'Aún no hay contratistas. Presiona “＋ Nuevo contratista”.'}</td></tr>`}
+    </tbody></table></div></div>
+    <div class="pc-pie">Formulario MF-RG-PR-38 · Revisión 007 · 01-06-2026</div>`;
+  const q2 = $('#pcQ'); q2.addEventListener('input', debounce(() => { S.pc.q = q2.value; pcDash(el); const i = $('#pcQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }, 200));
+  el.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { S.pc.flt = b.dataset.f; pcDash(el); });
+  el.querySelectorAll('th[data-o]').forEach(t => t.onclick = () => { const k = t.dataset.o; S.pc.srt = so.k === k ? { k, d: -so.d } : { k, d: 1 }; pcDash(el); });
+  $('#pcNuevo').onclick = () => pcForm(null);
+  el.querySelectorAll('tbody tr[data-id]').forEach(tr => tr.onclick = e => {
+    const id = +tr.dataset.id, c = L0.find(x => x.id === id), b = e.target.closest('[data-a]'); const a = b ? b.dataset.a : 'ver';
+    if (a === 'ver') location.hash = '#pcontratistas/' + id;
+    else if (a === 'editar') pcForm(c);
+    else if (a === 'correo') pcCorreo(c);
+    else if (a === 'reporte') pcReporte(c);
+    else if (a === 'duplicar') pcDuplicar(c);
+    else if (a === 'eliminar') pcEliminar(c);
+  });
+}
+const pcRecargar = () => { if (S.sub) pintarPC($('#contenido'), parseInt(S.sub, 10)); else pintarPCLista($('#contenido')); };
+
+async function pintarPC(el, id) {
+  el.innerHTML = '<div class="cargando"><div class="spin"></div><div>Cargando ficha…</div></div>';
+  let c; try { c = (await api('/api/contratistas?accion=ficha&id=' + id)).contratista; } catch (e) { el.innerHTML = `<a class="btn" href="#pcontratistas">← Volver</a><div class="aviso" style="margin-top:12px">${esc(e.message)}</div>`; return; }
+  const r = pcCalc(c), rv = pcRevisor();
+  const f = (l, v) => `<div><div class="pc-l">${l}</div><b>${esc(v) || '—'}</b></div>`;
+  const fila = d => {
+    const x = pcDoc(c, d.k), viejo = x.cargado && PC_VIGENCIA.includes(d.k) && (Date.now() - new Date(x.cargado)) / 864e5 > 90;
+    return `<div class="pc-dr" data-k="${d.k}"><div class="pc-dl">${d.l}</div><div><b>${esc(d.n)}</b>
+      <div class="pc-mu">${x.archivo_nombre ? `📎 ${esc(x.archivo_nombre)} · ${Math.max(1, Math.round((x.archivo_tam || 0) / 1024))} KB · cargado ${pcF(x.cargado)}${x.cargado_por ? ' por ' + esc(x.cargado_por) : ''}` : 'Sin archivo adjunto'} ${viejo ? '<span class="pcb y">⏰ más de 90 días: verificar vigencia</span>' : ''}</div>
+      <div class="pc-mu">Revisión: ${pcF(x.revisado)} · Revisor: ${esc(x.revisor) || '—'}</div>${x.obs ? `<div class="pc-ob">💬 ${esc(x.obs)}</div>` : ''}</div>
+      <div class="pc-da">${pcB(x.estado)}<div>${x.archivo_nombre ? `<button class="btn" data-d="ver">👁 Ver</button><button class="btn" data-d="bajar">⬇ Descargar</button><button class="btn" data-d="adjuntar">🔄 Reemplazar</button>` : `<button class="btn prim" data-d="adjuntar">＋ Adjuntar documento</button>`}</div>
+      <div><button class="btn pc-ok" data-r="CUMPLE">CUMPLE</button><button class="btn pc-no" data-r="NO CUMPLE">NO CUMPLE</button><button class="btn" data-r="NO APLICA">NO APLICA</button><button class="btn" data-r="PENDIENTE" title="Volver a pendiente">↺</button></div></div></div>`;
+  };
+  el.innerHTML = `<div class="pc-barra"><a class="btn" href="#pcontratistas">← Volver</a><span style="flex:1"></span>
+      <span class="pc-mu">Revisor: <b>${esc(rv.n)}</b> · Cargo</span><input id="pcCargo" class="pc-cargo" value="${esc(rv.c)}"></div>
+    <div class="card pc-head"><div><div class="pc-mu">${esc(empAct().nombre || 'MONFRUT')} · PRECALIFICACIÓN DE CONTRATISTA</div><h2>${esc(c.nombre)}</h2><div class="pc-mu">RUT ${esc(c.rut)} · Representante: ${esc(c.rep || '—')} · Contrato ${esc(c.contrato)}</div></div><div style="text-align:right">${pcB(r.est)}<div class="pc-pct">${r.pct}%</div></div></div>
+    ${r.est !== 'APROBADO' && r.pe ? '<div class="aviso">⚠ Este contratista tiene documentación pendiente de revisión.</div>' : ''}
+    <div class="card pc-sec"><b>Cumplimiento documental</b><div class="pc-pb grande"><i style="width:${r.pct}%"></i></div>${r.rev} de ${r.n} documentos revisados · ${r.cu} Cumple · ${r.nc} No cumple · ${r.pe} Pendientes · ${r.na} No aplica
+      <div class="pc-btns"><button class="btn" data-a="editar">✏ Editar</button><button class="btn" data-a="duplicar">⧉ Duplicar</button><button class="btn pc-no" data-a="eliminar">🗑 Eliminar</button>
+      <button class="btn prim" data-a="reporte">📄 Generar reporte de precalificación</button><button class="btn prim" data-a="correo">📧 Enviar resultado</button>
+      <button class="btn pc-ok" data-a="aprobar">✔ Aprobar</button><button class="btn pc-no" data-a="rechazar">${c.rech ? 'Reabrir precalificación' : '✖ Rechazar'}</button></div></div>
+    <div class="card pc-sec"><h3>Datos de la empresa</h3><div class="pc-grid">${f('ID interno', 'CT-' + String(c.id).padStart(3, '0'))}${f('Razón social', c.razon)}${f('RUT empresa', c.rut)}${f('Representante legal', c.rep)}${f('RUT representante', c.rut_rep)}${f('N° contrato', c.contrato)}${f('Correo', c.email)}${f('Teléfono', c.tel)}${f('Ingreso a precalificación', pcF(c.fecha))}</div></div>
+    <div class="card pc-sec"><h3>Documentos área de subcontratación</h3>${PC_DOCS.filter(d => d.c === PC_CS).map(fila).join('')}</div>
+    <div class="card pc-sec"><h3>Documentos área de prevención de riesgos</h3>${PC_DOCS.filter(d => d.c === PC_CP).map(fila).join('')}</div>
+    <div class="card pc-sec"><h3>Observaciones generales</h3><textarea id="pcObs" rows="3" class="pc-ta" placeholder="Observaciones de la precalificación">${esc(c.obs || '')}</textarea></div>
+    <div class="card pc-sec"><h3>Historial de revisiones</h3><div class="card-b" style="max-height:360px"><table class="t"><thead><tr><th>Fecha</th><th>Usuario</th><th>Acción</th></tr></thead><tbody>${(c.historial || []).map(h => `<tr><td>${new Date(h.fecha).toLocaleString('es-CL')}</td><td>${esc(h.usuario)}</td><td style="white-space:normal">${esc(h.accion)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  $('#pcCargo').onchange = e => { try { localStorage.setItem('pc_cargo', e.target.value); } catch (x) {} ss.set('pc_cargo', e.target.value); };
+  let obsPrev = c.obs || '';
+  $('#pcObs').onchange = async e => { if (e.target.value === obsPrev) return; obsPrev = e.target.value; try { await pcApi('obs', { id: c.id, obs: e.target.value }); aviso('Observaciones guardadas'); } catch (x) { aviso(x.message, true); } };
+  el.querySelectorAll('.pc-btns [data-a]').forEach(b => b.onclick = async () => {
+    const a = b.dataset.a;
+    if (a === 'editar') return pcForm(c);
+    if (a === 'duplicar') return pcDuplicar(c);
+    if (a === 'eliminar') return pcEliminar(c);
+    if (a === 'reporte') return pcReporte(c);
+    if (a === 'correo') return pcCorreo(c);
+    if (a === 'rechazar') { try { await pcApi('rechazar', { id: c.id }); aviso(c.rech ? 'Precalificación reabierta' : 'Precalificación rechazada'); pcRecargar(); } catch (x) { aviso(x.message, true); } return; }
+    if (a === 'aprobar') {
+      const p = pcPend(c);
+      if (p.length) return pcModal(`<div class="pc-mb"><div class="aviso pc-err">No es posible aprobar el contratista: existen documentos pendientes u observados.</div><ul>${p.map(d => `<li><b>${d.c} – ${d.l}</b>: ${esc(d.n.split(' - ')[0])} (${pcDoc(c, d.k).estado})</li>`).join('')}</ul></div><div class="ent-pie"><span style="flex:1"></span><button class="btn" data-cerrar>Cerrar</button></div>`, 620);
+      if (c.rech) { try { await pcApi('rechazar', { id: c.id }); } catch (x) {} }
+      aviso('Contratista APROBADO: todos los documentos cumplen o no aplican'); pcRecargar();
+    }
+  });
+  el.querySelectorAll('.pc-dr').forEach(dr => {
+    const k = dr.dataset.k, x = pcDoc(c, k);
+    dr.querySelectorAll('[data-d]').forEach(b => b.onclick = () => b.dataset.d === 'adjuntar' ? pcAdjuntar(c, k) : pcArchivo(c, k, b.dataset.d === 'bajar'));
+    dr.querySelectorAll('[data-r]').forEach(b => b.onclick = () => pcRevisar(c, k, b.dataset.r, x));
+  });
+}
+function pcAdjuntar(c, k) {
+  const i = document.createElement('input'); i.type = 'file'; i.accept = '.pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png';
+  i.onchange = async () => {
+    const f = i.files[0]; if (!f) return;
+    if (!/\.(pdf|docx?|xlsx?|jpe?g|png)$/i.test(f.name)) return aviso('Formato no permitido (PDF, DOC, DOCX, XLS, XLSX, JPG, PNG)', true);
+    if (f.size > 4 * 1024 * 1024) return aviso('El archivo supera 4 MB. Redúcelo o escanéalo con menor resolución.', true);
+    aviso('Subiendo ' + f.name + '…');
+    try {
+      const r = await fetch(`/api/contratistas?accion=adjuntar&id=${c.id}&k=${k}`, { method: 'POST', body: f, headers: { ...authHdr(), 'Content-Type': 'application/octet-stream', 'x-nombre': encodeURIComponent(f.name) } });
+      if (r.status === 499) throw new Error('El antivirus bloqueó la conexión (error 499).');
+      const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      aviso('Documento adjuntado: ' + f.name); pcRecargar();
+    } catch (e) { aviso(e.message, true); }
+  };
+  i.click();
+}
+async function pcArchivo(c, k, bajar) {
+  const w = bajar ? null : window.open('', '_blank');
+  try {
+    const r = await fetch(`/api/contratistas?accion=archivo&id=${c.id}&k=${k}`, { headers: authHdr() });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'No se pudo abrir el documento');
+    const url = URL.createObjectURL(await r.blob());
+    if (bajar) { const a = document.createElement('a'); a.href = url; a.download = decodeURIComponent(r.headers.get('x-nombre') || 'documento'); a.click(); }
+    else if (w) w.location = url; else location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (e) { if (w) w.close(); aviso(e.message, true); }
+}
+function pcRevisar(c, k, estado, x) {
+  const d = PC_DM[k];
+  const m = pcModal(`<div class="mhead"><div class="mtit"><b>${estado} — ${d.l}. ${esc(d.n.split(' - ')[0])}</b><span>${d.c}</span></div></div>
+    <div class="ent-cuerpo"><label>Observación ${estado === 'NO CUMPLE' ? '(obligatoria)' : '(opcional)'}<textarea id="pcRvObs" rows="4" placeholder="Ej: Certificado vencido. Se solicita documento actualizado.">${esc(x.obs || '')}</textarea></label><div class="err" id="pcRvErr"></div></div>
+    <div class="ent-pie"><span style="flex:1"></span><button class="btn" data-cerrar>Cancelar</button><button class="btn prim" id="pcRvOk">Confirmar</button></div>`);
+  $('#pcRvObs').focus();
+  $('#pcRvOk').onclick = async () => {
+    const obs = $('#pcRvObs').value.trim();
+    if (estado === 'NO CUMPLE' && !obs) return $('#pcRvErr').textContent = 'Debe ingresar una observación para marcar NO CUMPLE.';
+    if (estado === 'CUMPLE' && !x.archivo_nombre) return $('#pcRvErr').textContent = 'Adjunte el documento antes de marcarlo como CUMPLE.';
+    try { await pcApi('revisar', { id: c.id, k, estado, obs }); m.remove(); aviso(`Documento ${d.l}: ${estado}`); pcRecargar(); } catch (e) { $('#pcRvErr').textContent = e.message; }
+  };
+}
+const PC_FF = [['nombre', 'Nombre de la empresa'], ['razon', 'Razón social'], ['rut', 'RUT de la empresa'], ['rep', 'Representante legal'], ['rut_rep', 'RUT representante legal'], ['contrato', 'Número de contrato'], ['email', 'Correo electrónico', 'email'], ['tel', 'Teléfono'], ['fecha', 'Fecha de ingreso', 'date']];
+function pcForm(c) {
+  const v = c || { fecha: hoyISO(), obs: '' };
+  const m = pcModal(`<div class="mhead"><div class="mtit"><b>${c ? 'Editar' : 'Nuevo'} contratista</b><span>Nombre, RUT y N° de contrato son obligatorios</span></div></div>
+    <div class="ent-cuerpo"><div class="pc-grid">${PC_FF.map(f => `<label>${f[1]}<input id="pcf_${f[0]}" type="${f[2] || 'text'}" value="${esc(f[0] === 'fecha' && v.fecha ? String(v.fecha).slice(0, 10) : v[f[0]] || '')}"></label>`).join('')}</div>
+    <label>Observaciones generales<textarea id="pcf_obs" rows="3">${esc(v.obs || '')}</textarea></label><div class="err" id="pcfErr"></div></div>
+    <div class="ent-pie"><span style="flex:1"></span><button class="btn" data-cerrar>Cancelar</button><button class="btn prim" id="pcfOk">Guardar</button></div>`, 680);
+  $('#pcf_nombre').focus();
+  $('#pcfOk').onclick = async () => {
+    const d = { id: c ? c.id : undefined }; PC_FF.forEach(f => d[f[0]] = $('#pcf_' + f[0]).value.trim()); d.obs = $('#pcf_obs').value;
+    if (!d.nombre || !d.rut || !d.contrato) return $('#pcfErr').textContent = 'Nombre, RUT y número de contrato son obligatorios.';
+    try { const j = await pcApi('guardar', d); m.remove(); aviso(c ? 'Datos actualizados' : 'Contratista creado'); if (!c) location.hash = '#pcontratistas/' + j.id; else pcRecargar(); } catch (e) { $('#pcfErr').textContent = e.message; }
+  };
+}
+async function pcDuplicar(c) { try { const j = await pcApi('duplicar', { id: c.id }); aviso('Contratista duplicado (documentos reiniciados)'); location.hash = '#pcontratistas/' + j.id; } catch (e) { aviso(e.message, true); } }
+function pcEliminar(c) {
+  const m = pcModal(`<div class="mhead"><div class="mtit"><b>Eliminar contratista</b></div></div><div class="ent-cuerpo"><p style="margin:0">¿Eliminar <b>${esc(c.nombre)}</b> y todos sus documentos? Esta acción no se puede deshacer.</p></div>
+    <div class="ent-pie"><span style="flex:1"></span><button class="btn" data-cerrar>Cancelar</button><button class="btn conf" id="pcDelOk">Eliminar</button></div>`);
+  $('#pcDelOk').onclick = async () => { try { await pcApi('eliminar', { id: c.id }); m.remove(); aviso('Contratista eliminado'); if (S.sub) location.hash = '#pcontratistas'; else pcRecargar(); } catch (e) { aviso(e.message, true); } };
+}
+function pcBorrador(c) {
+  const r = pcCalc(c), ob = PC_DOCS.filter(d => pcDoc(c, d.k).estado === 'NO CUMPLE'), pe = PC_DOCS.filter(d => pcDoc(c, d.k).estado === 'PENDIENTE');
+  const emp = empAct().nombre || 'MONFRUT', sg = `\n\nSaludos cordiales,\nÁrea de Contratistas\n${emp}`, nm = d => d.n.split(' - ')[0].split(' (')[0];
+  const li = (a, t) => a.map(d => `- ${nm(d)}: ${pcDoc(c, d.k).obs || t}`).join('\n');
+  const cuerpo = r.est === 'APROBADO'
+    ? `Estimados,\n\nJunto con saludar, informamos que luego de realizar la revisión de los antecedentes correspondientes al proceso de precalificación de contratistas, la empresa ${c.nombre} ha cumplido satisfactoriamente con la documentación solicitada.\n\nResultado: APROBADO.\n\nAgradecemos mantener actualizada la documentación durante la vigencia del contrato.` + sg
+    : `Estimados,\n\nJunto con saludar, de acuerdo con la revisión realizada a los antecedentes de la empresa ${c.nombre}, se encuentran pendientes/observados los siguientes antecedentes:\n\n` + (ob.length ? 'Documentos observados:\n' + li(ob, 'Documento observado') + '\n\n' : '') + (pe.length ? 'Documentos pendientes:\n' + li(pe, 'Documento pendiente') + '\n\n' : '') + 'Solicitamos regularizar los antecedentes indicados para continuar con el proceso de precalificación.' + sg;
+  return { para: c.email || '', asunto: 'Resultado Precalificación Contratista – ' + c.nombre, cuerpo, estado: r.est };
+}
+function pcCorreo(c) {
+  const p = pcBorrador(c);
+  const m = pcModal(`<div class="mhead"><div class="mtit"><b>📧 Enviar resultado</b><span>${esc(c.nombre)}</span></div>${pcB(p.estado)}</div>
+    <div class="ent-cuerpo"><label>Para<input id="pcmTo" value="${esc(p.para)}"></label><label>Asunto<input id="pcmS" value="${esc(p.asunto)}"></label><label>Mensaje (editable)<textarea id="pcmB" rows="13">${esc(p.cuerpo)}</textarea></label></div>
+    <div class="ent-pie"><span style="flex:1"></span><button class="btn" data-cerrar>Cancelar</button><button class="btn" id="pcmCp">Copiar texto</button><button class="btn prim" id="pcmOk">Abrir en Outlook</button></div>`, 700);
+  $('#pcmCp').onclick = () => { const t = $('#pcmB').value; (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(() => aviso('Texto copiado'), () => aviso('No se pudo copiar', true)); };
+  $('#pcmOk').onclick = async () => {
+    const a = document.createElement('a'); a.href = 'mailto:' + encodeURIComponent($('#pcmTo').value) + '?subject=' + encodeURIComponent($('#pcmS').value) + '&body=' + encodeURIComponent($('#pcmB').value); a.click();
+    m.remove(); try { await pcApi('nota', { id: c.id, texto: `Preparó correo de resultado (${p.estado}) a ${$('#pcmTo') ? $('#pcmTo').value : p.para || '—'}` }); } catch (e) {}
+  };
+}
+async function pcReporte(c0) {
+  let c = c0; if (!c.historial) { try { c = (await api('/api/contratistas?accion=ficha&id=' + c0.id)).contratista; } catch (e) {} }
+  const r = pcCalc(c), e = r.est, res = e === 'APROBADO' ? 0 : (e === 'OBSERVADO' || e === 'RECHAZADO') ? 1 : 2, rv = pcRevisor(), hoy = new Date().toLocaleDateString('es-CL');
+  const tb = cat => `<table><tr><th>Ítem</th><th>Documento</th><th>Estado</th><th>Observación</th></tr>${PC_DOCS.filter(d => d.c === cat).map(d => { const x = pcDoc(c, d.k); return `<tr><td>${d.l}</td><td>${esc(d.n)}</td><td>${x.estado}</td><td>${esc(x.obs || '')}</td></tr>`; }).join('')}</table>`;
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Precalificación ${esc(c.nombre)}</title><style>
+    body{font:13px Arial,sans-serif;color:#111;margin:24px}h1{color:#1b5e20;margin:0;font-size:22px}h2{font-size:16px;margin:6px 0}h3{font-size:13px;margin:16px 0 6px}
+    table{width:100%;border-collapse:collapse;margin:6px 0}th,td{border:1px solid #999;padding:5px 7px;text-align:left;vertical-align:top}th{background:#e6f4e7}
+    .np{margin-bottom:16px}.np button{padding:8px 14px;margin-right:6px;cursor:pointer}@media print{.np{display:none}body{margin:0}}</style></head><body>
+    <div class="np"><button onclick="window.print()">🖨 Imprimir / Guardar como PDF</button><button onclick="window.close()">Cerrar</button></div>
+    <h1>${esc(empAct().nombre || 'MONFRUT')}</h1><h2>REPORTE DE PRECALIFICACIÓN DE CONTRATISTA</h2><div style="font-size:12px">Formulario MF-RG-PR-38 · Revisión 007 · Fecha ${hoy}</div>
+    <table style="margin:10px 0"><tr><th>Empresa</th><td>${esc(c.nombre)}</td><th>RUT</th><td>${esc(c.rut)}</td></tr><tr><th>Representante legal</th><td>${esc(c.rep || '')}</td><th>N° contrato</th><td>${esc(c.contrato)}</td></tr><tr><th>Estado final</th><td>${e}</td><th>Cumplimiento</th><td>${r.pct}% (${r.rev}/${r.n} revisados)</td></tr></table>
+    <h3>Documentos área de subcontratación</h3>${tb(PC_CS)}<h3>Documentos área de prevención de riesgos</h3>${tb(PC_CP)}
+    <h3>RESULTADO DE PRECALIFICACIÓN${e === 'RECHAZADO' ? ' (RECHAZADO)' : ''}</h3><p>${['APROBADO', 'OBSERVADO', 'PENDIENTE'].map((t, i) => (i === res ? '☒ ' : '☐ ') + t).join('&nbsp;&nbsp;&nbsp;')}</p>
+    <p><b>Observaciones generales:</b> ${esc(c.obs || '—')}</p><p><b>Revisor:</b> ${esc(rv.n)} — ${esc(rv.c)}<br><b>Fecha:</b> ${hoy}<br><br>Firma: ______________________</p></body></html>`;
+  const w = window.open('', '_blank'); if (!w) return aviso('Permite las ventanas emergentes para ver el reporte.', true);
+  w.document.open(); w.document.write(html); w.document.close();
+}
 
 async function pintarRendiciones(c) {
   c.innerHTML = `<div class="cargando"><div class="spin"></div></div>`;

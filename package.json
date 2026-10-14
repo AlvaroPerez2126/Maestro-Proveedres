@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Maestro de Proveedores MONFRUT - versión web del informe Power BI, con datos en Neon",
+  "description": "Portal de Finanzas MONFRUT - versión web del informe Power BI (PostgreSQL, Vercel o Azure App Service)",
   "dependencies": {
     "pdf-lib": "^1.17.1",
     "pg": "^8.13.0"
   },
   "engines": {
     "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.mjs"
   }
 }

@@ -1,0 +1,1757 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firma de facturas · Circuito V°B°</title>
+<!-- pdf-lib: estampa las firmas sobre el PDF real (requiere internet la primera vez) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script>window.PDFLib || document.write('<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"><\/script>')</script>
+<style>
+:root{
+  --bg:#f3f5f8; --surface:#fff; --ink:#16212e; --ink-2:#3b4757; --muted:#6b7686; --line:#e2e7ee;
+  --primary:#1d4f80; --primary-h:#163e66; --primary-soft:#e8f0f8;
+  --side:#10233a; --side-2:#163049; --side-ink:#b8c5d5;
+  --ok:#15803d; --ok-soft:#e7f6ec; --warn:#b45309; --warn-soft:#fff4e2; --danger:#b91c1c; --danger-soft:#fdecec;
+  --radius:12px; --shadow:0 1px 2px rgba(16,35,58,.06),0 6px 20px rgba(16,35,58,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+h1,h2,h3,h4{margin:0;line-height:1.25}
+.muted{color:var(--muted)} .small{font-size:12.5px} .hidden{display:none!important}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* ---------- Botones ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:#fff;padding:9px 14px;border-radius:9px;cursor:pointer;font-weight:600;font-size:13.5px;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:#c9d2de;background:#f8fafc}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primary:hover{background:var(--primary-h)}
+.btn.success{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.success:hover{filter:brightness(.93)}
+.btn.warn{background:#f59e0b;border-color:#f59e0b;color:#2b1a00}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.ghost:hover{background:#eef2f6}
+.btn.sm{padding:6px 10px;font-size:12.5px}
+.btn.lg{padding:13px 18px;font-size:14.5px;border-radius:10px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.link{background:none;border:0;color:var(--primary);cursor:pointer;font-weight:600;padding:0}
+
+/* ---------- Badges ---------- */
+.badge{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-pend{background:#fff3dc;color:#9a5800}
+.b-vb{background:#e5efff;color:#1d4ed8}
+.b-dev{background:#f1e8ff;color:#6d28d9}
+.b-ger{background:#dff5f2;color:#0f766e}
+.b-ok{background:#e3f6e9;color:#15803d}
+.b-na{background:#eef1f4;color:#5b6675}
+
+/* ---------- Login ---------- */
+.login-wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 16px;background:radial-gradient(1200px 600px at 10% -10%,#dbe7f3 0,transparent 60%),var(--bg)}
+.login-card{width:100%;max-width:400px;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:30px 28px}
+.brand-lg{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.logo{width:40px;height:40px;border-radius:10px;background:var(--primary);color:#fff;display:grid;place-items:center;font-weight:800;font-size:13px;letter-spacing:.02em}
+.brand-lg h1{font-size:19px} .brand-lg p{margin:2px 0 0;color:var(--muted);font-size:13px}
+.field{display:block;margin-bottom:14px}
+.field>span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.input{width:100%;padding:10px 12px;border:1px solid #d3dbe5;border-radius:9px;background:#fff;outline:none;transition:.15s}
+.input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(29,79,128,.14)}
+.err{color:var(--danger);font-size:13px;min-height:18px;margin:-4px 0 10px}
+.demo-users{margin-top:22px;padding-top:18px;border-top:1px dashed var(--line)}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.chip{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fafbfd;cursor:pointer;text-align:left}
+.chip:hover{border-color:var(--primary);background:var(--primary-soft)}
+.avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:11.5px;color:#fff;flex:none}
+.av-AP{background:#1d4f80}.av-SC{background:#6d28d9}.av-TG{background:#0f766e}.av-HL{background:#b45309}
+.chip b{display:block;font-size:13px}.chip small{color:var(--muted);font-size:11.5px}
+.login-foot{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+
+/* ---------- Layout ---------- */
+.layout{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+.sidebar{background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;padding:18px 12px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.side-brand{display:flex;align-items:center;gap:10px;padding:4px 8px 18px;color:#fff}
+.side-brand .logo{width:34px;height:34px;background:#2f6aa3}
+.side-brand b{display:block;font-size:14.5px}.side-brand small{color:var(--side-ink);font-size:11.5px}
+.nav-label{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#7189a3;padding:14px 10px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;background:transparent;color:var(--side-ink);border-radius:8px;cursor:pointer;text-align:left;font-size:13.5px;font-weight:500}
+.nav-item:hover{background:var(--side-2);color:#fff}
+.nav-item.active{background:#1f4466;color:#fff}
+.nav-item span:first-of-type{flex:1}
+.count{font-size:11px;font-weight:700;background:#24405d;color:#cfdbe8;padding:1px 8px;border-radius:999px}
+.count.hot{background:#f59e0b;color:#2b1a00}
+.side-foot{margin-top:auto;padding:14px 10px 4px;font-size:11.5px;color:#7189a3;border-top:1px solid #1f3650}
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:10px 24px;min-height:60px}
+.topbar .who{display:flex;align-items:center;gap:10px;margin-left:auto}
+.who-text{font-size:13px;line-height:1.3;text-align:right}
+.who-text b{color:var(--ink)}
+.fs-chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:#f8fafc;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink-2);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fs-chip .led{width:8px;height:8px;border-radius:50%;background:#a3adba;flex:none}
+.fs-chip.ok .led{background:var(--ok)} .fs-chip.warn{background:var(--warn-soft);border-color:#f6d7a8;color:#7a4300} .fs-chip.warn .led{background:#f59e0b}
+.menu-btn{display:none}
+.content{padding:24px;max-width:1280px;width:100%}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap}
+.page-head h1{font-size:22px}.page-head p{margin:4px 0 0;color:var(--muted)}
+
+/* ---------- Tarjetas ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+.card h3{font-size:15px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px;margin-bottom:22px}
+.stat{cursor:pointer;text-align:left;border:1px solid var(--line);background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);transition:.15s;display:flex;flex-direction:column;gap:8px}
+.stat:hover{border-color:#b9c8d9;transform:translateY(-1px)}
+.stat .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary)}
+.stat.hot .ic{background:var(--warn-soft);color:var(--warn)}
+.stat .n{font-size:26px;font-weight:800;line-height:1}
+.stat .l{font-size:13px;font-weight:600;color:var(--ink-2)}
+.stat .h{font-size:11.5px;color:var(--muted)}
+.grid-2{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+.section-title{display:flex;align-items:center;justify-content:space-between;margin:0 0 12px}
+.section-title h2{font-size:15.5px}
+.banner{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius);background:var(--warn-soft);border:1px solid #f6d7a8;color:#7a4300;margin-bottom:20px;flex-wrap:wrap}
+.banner .grow{flex:1;min-width:200px}
+.banner.info{background:var(--primary-soft);border-color:#c9daec;color:#173f66}
+.inbox-list{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
+.inbox-item{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#fff;border:1px solid #c9daec;border-left:4px solid var(--primary);border-radius:10px}
+.inbox-item .grow{flex:1;min-width:0}
+.inbox-item b{font-family:ui-monospace,Menlo,Consolas,monospace}
+
+/* ---------- Tabla ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius);background:#fff;box-shadow:var(--shadow)}
+.tbl{width:100%;border-collapse:collapse;min-width:640px}
+.tbl th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;text-align:left;padding:11px 14px;background:#f8fafc;border-bottom:1px solid var(--line)}
+.tbl td{padding:12px 14px;border-bottom:1px solid #eef1f5;vertical-align:middle}
+.tbl tbody tr{cursor:pointer;transition:.12s}
+.tbl tbody tr:hover{background:#f6f9fc}
+.tbl tbody tr:last-child td{border-bottom:0}
+.tbl .r{text-align:right}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:600}
+.dots{display:inline-flex;gap:4px}
+.dot{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:8.5px;font-weight:800;border:1.5px solid #cfd7e1;color:#9aa5b3;background:#fff}
+.dot.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.dot.na{border-style:dashed;opacity:.5}
+.empty{text-align:center;padding:42px 20px;color:var(--muted);background:#fff;border:1px dashed #d3dbe5;border-radius:var(--radius)}
+.empty svg{width:34px;height:34px;color:#a8b4c3;margin-bottom:8px}
+
+/* ---------- Timeline ---------- */
+.timeline{list-style:none;margin:0;padding:0;position:relative}
+.timeline li{position:relative;padding:0 0 14px 22px}
+.timeline li::before{content:"";position:absolute;left:5px;top:6px;bottom:-6px;width:2px;background:#e3e8ee}
+.timeline li:last-child::before{display:none}
+.timeline li::after{content:"";position:absolute;left:0;top:4px;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid var(--primary)}
+.timeline li.ok::after{border-color:var(--ok);background:var(--ok)}
+.timeline li.sys::after{border-color:#a3adba;width:10px;height:10px;left:1px}
+.t-date{font-size:11.5px;color:var(--muted)}
+.t-text{font-size:13px;font-weight:500}
+.timeline li.sys .t-text{font-weight:400;color:var(--ink-2);font-size:12.5px}
+.t-id{font-size:11.5px;color:var(--primary);font-weight:700}
+
+/* ---------- Modales ---------- */
+.backdrop{position:fixed;inset:0;background:rgba(12,24,40,.5);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100;animation:fade .15s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);width:100%;max-height:94vh;display:flex;flex-direction:column;overflow:hidden}
+.modal-md{max-width:560px}.modal-sm{max-width:420px}.modal-xl{max-width:1180px}
+.modal-head{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.modal-head h3{font-size:16px}
+.modal-head .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.modal-head .acts{margin-left:auto;display:flex;gap:6px;align-items:center}
+.modal-body{padding:18px;overflow-y:auto}
+.modal-foot{display:flex;justify-content:flex-end;gap:10px;padding:14px 18px;border-top:1px solid var(--line);background:#fafbfc}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.form-grid .full{grid-column:1/-1}
+.busy{position:fixed;inset:0;z-index:400;background:rgba(255,255,255,.75);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;font-weight:600;color:var(--ink-2)}
+.spin{width:34px;height:34px;border:3px solid #d3dbe5;border-top-color:var(--primary);border-radius:50%;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* ---------- Vista documento ---------- */
+.doc-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:0;overflow-y:auto;flex:1;background:#eef1f5}
+.sheet-wrap{padding:22px;display:flex;justify-content:center}
+.doc-side{background:#fff;border-left:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:14px}
+.side-card{border:1px solid var(--line);border-radius:10px;padding:14px}
+.side-card h4{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.action-card{border-color:#c9daec;background:#f7fafd}
+.action-card .btn{width:100%}
+.action-card p{margin:0 0 12px;font-size:13px;color:var(--ink-2)}
+.btn-row{display:flex;flex-direction:column;gap:8px}
+.ger-pick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.ger-opt{border:2px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;display:flex;align-items:center;gap:8px;font-weight:700}
+.ger-opt.sel{border-color:var(--primary);background:var(--primary-soft)}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.checks li{display:flex;align-items:center;gap:10px;font-size:13px}
+.ck{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;border:1.5px solid #cbd3dd;color:#9aa5b3;flex:none}
+.ck.on{background:var(--ok);border-color:var(--ok);color:#fff}
+.checks .when{margin-left:auto;font-size:11.5px;color:var(--muted)}
+.files li{font-size:12.5px}
+.files .fname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Hoja A4 */
+.a4{width:100%;max-width:640px;aspect-ratio:210/297;background:#fff;box-shadow:0 2px 6px rgba(0,0,0,.08),0 12px 32px rgba(16,35,58,.12);display:flex;flex-direction:column;padding:4.2% 5%;position:relative;color:#1b2430}
+.a4-head{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;gap:6px 14px;padding-bottom:10px;border-bottom:2px solid #1b2430;font-size:11.5px}
+.a4-head div span{display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;color:#6b7686}
+.a4-head div b{font-size:12.5px}
+.a4-head .stamp{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#6b7686}
+.a4-body{flex:1;min-height:0;margin:12px 0;border:1px solid #e6eaef;border-radius:4px;overflow:hidden;background:#fbfcfd;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12.5px}
+.a4-body img{max-width:100%;max-height:100%;object-fit:contain}
+.a4-body iframe{width:100%;height:100%;border:0;background:#fff}
+.sim{width:100%;height:100%;padding:16px 18px;font-size:10.5px;display:flex;flex-direction:column;gap:12px;background:#fff;color:#1b2430}
+.sim-top{display:flex;justify-content:space-between;gap:12px}
+.sim-box{border:2px solid #b91c1c;color:#b91c1c;padding:8px 12px;text-align:center;font-weight:700;font-size:10.5px;line-height:1.5;flex:none}
+.sim table{width:100%;border-collapse:collapse}
+.sim th,.sim td{border-bottom:1px solid #e6eaef;padding:5px 4px;text-align:left}
+.sim th{background:#f3f5f8;font-size:9.5px;text-transform:uppercase}
+.sim .tot{margin-left:auto;width:55%}
+.sim .tot td:last-child{text-align:right;font-weight:700}
+.sim-note{margin-top:auto;text-align:center;color:#9aa5b3;font-style:italic;font-size:10px}
+
+/* Zona de firmas – posiciones FIJAS */
+.sig-zone{display:grid;grid-template-columns:repeat(3,1fr);border:1.5px solid #1b2430;border-radius:4px;flex:none}
+.sig-slot{display:flex;flex-direction:column;align-items:center;padding:8px 6px 8px;text-align:center;border-right:1px solid #cfd6df;min-width:0}
+.sig-slot:last-child{border-right:0}
+.sig-area{font-size:9.5px;font-weight:800;letter-spacing:.12em;color:#1b2430}
+.sig-img{height:62px;width:100%;display:flex;align-items:flex-end;justify-content:center;margin:4px 0 2px}
+.sig-img img{max-height:100%;max-width:92%;object-fit:contain}
+.sig-pend{font-size:10px;color:#a3adba;border:1px dashed #c9d1db;border-radius:4px;padding:4px 10px;margin-bottom:8px;font-style:italic}
+.sig-line{width:82%;border-top:1px solid #1b2430;margin-bottom:3px}
+.sig-name{font-size:11px;font-weight:800}
+.sig-date{font-size:9.5px;color:#5b6675;min-height:13px}
+.sig-slot.signed .sig-area::after{content:" ✓";color:var(--ok)}
+.sig-slot.na{opacity:.5}
+
+/* Firma */
+.checker{background-color:#fff;background-image:linear-gradient(45deg,#f0f2f5 25%,transparent 25%),linear-gradient(-45deg,#f0f2f5 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f2f5 75%),linear-gradient(-45deg,transparent 75%,#f0f2f5 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
+.sig-current{height:170px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;margin-bottom:12px;padding:12px}
+.sig-current img{max-height:140px;max-width:100%}
+.drop{display:flex;flex-direction:column;align-items:center;gap:6px;border:2px dashed #c4cfdc;border-radius:12px;padding:22px;text-align:center;cursor:pointer;color:var(--ink-2);background:#fafbfd}
+.drop:hover,.drop.over{border-color:var(--primary);background:var(--primary-soft)}
+.drop svg{width:28px;height:28px;color:var(--primary)}
+.drop.locked{cursor:default;border-style:solid;border-color:#c9daec;background:var(--primary-soft)}
+.sig-preview{height:140px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;margin-top:12px;color:var(--muted);font-size:12.5px}
+.sig-preview img{max-height:120px;max-width:95%}
+.check{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;cursor:pointer}
+.tabs{display:flex;gap:4px;background:#eef2f6;padding:4px;border-radius:10px;margin-bottom:14px}
+.tab{flex:1;border:0;background:transparent;padding:8px;border-radius:7px;cursor:pointer;font-weight:600;color:var(--muted)}
+.tab.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+#pad{width:100%;height:190px;border:1px solid var(--line);border-radius:10px;touch-action:none;cursor:crosshair;background:#fff}
+.tips{margin:12px 0 0;padding-left:18px;color:var(--ink-2);font-size:13px}
+.tips li{margin-bottom:6px}
+
+/* Carpetas */
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0 4px}
+.flow .node{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;min-width:130px}
+.flow .node b{font-size:12.5px}.flow .node small{color:var(--muted);font-size:11.5px}
+.flow .node.final{border-color:#9fd5b2;background:var(--ok-soft)}
+.flow .arrow{color:#a3adba;font-weight:700}
+.flow .who{font-size:10.5px;font-weight:800;color:var(--primary);letter-spacing:.04em}
+
+/* Buscador */
+.search-hero{position:relative;margin-bottom:20px}
+.search-hero svg{position:absolute;left:18px;top:50%;transform:translateY(-50%);width:22px;height:22px;color:var(--muted)}
+.search-big{width:100%;font-size:17px;padding:17px 18px 17px 52px;border:1.5px solid #cdd6e1;border-radius:14px;background:#fff;box-shadow:var(--shadow);outline:none}
+.search-big:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(29,79,128,.12)}
+.detail{display:grid;grid-template-columns:1.1fr 1fr 1.2fr;gap:16px;margin-bottom:20px}
+.detail .big-id{font-size:24px;font-weight:800}
+.loc{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--primary-soft);border-radius:10px;font-weight:700;color:#173f66;margin-top:12px}
+
+/* Toasts */
+#toasts{position:fixed;right:16px;bottom:16px;z-index:300;display:flex;flex-direction:column;gap:8px;max-width:calc(100vw - 32px)}
+.toast{background:#13263c;color:#fff;padding:11px 14px;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);display:flex;gap:10px;align-items:center;font-size:13.5px;animation:up .2s}
+.toast.ok{background:#14532d}.toast.warn{background:#78350f}.toast.error{background:#7f1d1d}
+@keyframes up{from{transform:translateY(8px);opacity:0}to{transform:none;opacity:1}}
+
+.overlay{display:none}
+.lw{position:relative;display:inline-flex;flex:none}
+.lw .brand-img{display:none;height:40px;max-width:120px;object-fit:contain;background:#fff;border-radius:8px;padding:4px 6px}
+.lw.has-img .brand-img{display:block}.lw.has-img .logo{display:none}
+.side-brand .lw .brand-img{height:34px;max-width:96px}
+.back-link{display:flex;align-items:center;gap:8px;color:var(--side-ink);text-decoration:none;font-size:12.5px;padding:8px 10px;border-radius:8px;margin-bottom:8px}
+.back-link:hover{background:var(--side-2);color:#fff}
+.reg-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:20px;padding:18px;overflow-y:auto;flex:1;min-height:0}
+.reg-prev{position:sticky;top:0;height:calc(94vh - 170px);min-height:420px;border:1px solid var(--line);border-radius:10px;background:#eef1f5;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center}
+.reg-prev iframe{width:100%;height:100%;border:0;background:#fff}
+.reg-prev img{max-width:100%;max-height:100%;object-fit:contain}
+.oc-hint{display:block;font-size:11.5px;margin-top:5px;color:var(--ok);font-weight:600;min-height:15px}
+.oc-hint.muted{color:var(--muted);font-weight:400}
+.oc-hint button{background:none;border:0;color:var(--primary);font-weight:700;cursor:pointer;padding:0 0 0 4px;font-size:11.5px}
+@media (max-width:900px){.reg-body{grid-template-columns:1fr}.reg-prev{position:static;height:65vh;min-height:360px}}
+.done{text-align:center;padding:34px 26px 26px}
+.done-ic{width:84px;height:84px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 16px;animation:pop .35s ease-out}
+.done-ic svg{width:44px;height:44px;stroke-width:2.4}
+.done h2{font-size:21px;margin-bottom:8px}.done p{color:var(--ink-2);margin:0 0 20px}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+.qpos{font-size:11.5px;font-weight:700;color:var(--primary);background:var(--primary-soft);padding:4px 10px;border-radius:999px;white-space:nowrap}
+
+/* ---------- Responsive ---------- */
+@media (max-width:1000px){
+  .grid-2,.detail{grid-template-columns:1fr}
+  .doc-grid{grid-template-columns:1fr}
+  .doc-side{border-left:0;border-bottom:1px solid var(--line);order:-1}
+}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;width:260px;z-index:60;transform:translateX(-100%);transition:transform .2s}
+  .sidebar.open{transform:none}
+  .overlay.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:50}
+  .menu-btn{display:inline-flex}
+  .topbar{padding:10px 16px}
+  .content{padding:18px 16px}
+  .hide-sm{display:none}
+  .who-text .role-l{display:none}
+  .fs-chip .fs-txt{display:none}
+}
+@media (max-width:560px){
+  .form-grid{grid-template-columns:1fr}
+  .chips{grid-template-columns:1fr}
+  .sheet-wrap{padding:12px}
+  .a4{aspect-ratio:auto;min-height:620px}
+  .a4-head{grid-template-columns:1fr 1fr}
+  .sig-img{height:46px}
+  .topbar .btn span{display:none}
+}
+
+/* ---------- Impresión: solo la hoja A4 ---------- */
+@media print{
+  @page{size:A4;margin:0}
+  body{background:#fff}
+  body *{visibility:hidden}
+  .print-area,.print-area *{visibility:visible}
+  .print-area{position:absolute;inset:0;padding:0}
+  .print-area .a4{max-width:none;width:210mm;height:297mm;box-shadow:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modals"></div>
+<div id="toasts"></div>
+
+<script>
+/* ---- Integración con el Portal de Finanzas MONFRUT ----
+   Abierto desde el portal (/vb.html?emp=<id>&nom=<empresa>): la sesión es la del portal (sin claves propias),
+   cada empresa usa su propia carpeta y su propio registro en este navegador. No se usa la base de datos (Neon):
+   todo vive en la carpeta de la empresa (OneDrive) y en el navegador. */
+const QS = new URLSearchParams(location.search);
+const EMP = parseInt(QS.get('emp') || '0', 10) || 0;
+const EMP_NOM = QS.get('nom') || '';
+const EN_PORTAL = /^https?:$/.test(location.protocol);           // servido por el portal (no como archivo local)
+const EN_MARCO = window.top !== window;                           // dentro de la página del portal
+const SUF = EMP ? '_e' + EMP : '';
+/* Usuario del portal -> rol del circuito. Se reconoce por el nombre o usuario (alvaro, santiago, thomas, hans).
+   El usuario "admin" del portal firma como AP. Para casos especiales, agregar aquí:  'usuario_portal': 'SC'  */
+const ROL_PORTAL = { admin: 'AP' };
+/* =====================================================================
+   CIRCUITO V°B° — PROTOTIPO (HTML + CSS + JS + localStorage + carpetas)
+   ---------------------------------------------------------------------
+   • Sin carpeta conectada: todo vive en localStorage (modo demo).
+   • Con carpeta conectada (Chrome / Edge, File System Access API):
+       - Se elige la carpeta raíz (ej. "SANTA ANA" en OneDrive).
+       - Cada paso deja una COPIA del PDF firmado en su carpeta:
+           DOCUMENTO INICIAL  -> original, nombre = ID (ej. 24350.pdf)
+           FIRMADA POR AP     -> con firma AP
+           FIRMADA POR SC     -> con firmas AP + SC
+           FIRMA GERENTE      -> con firmas AP + SC + TG/HL
+           FACTURAS FIRMADAS  -> versión final
+         Sin V°B°:  DOCUMENTO INICIAL -> FIRMADA POR AP -> FACTURAS FIRMADAS
+       - El registro (estado + historial) se guarda en _SISTEMA_VB/<ID>.json
+         dentro de la misma carpeta, así otros usuarios con la carpeta
+         sincronizada por OneDrive ven el mismo estado.
+   • Las firmas se estampan sobre la PÁGINA 1 del PDF, en una franja inferior
+     de posición FIJA (PDF_SIG), usando pdf-lib.
+   Próximo paso (versión definitiva): backend + base de datos + login real.
+   ===================================================================== */
+
+/* Usuarios: se puede entrar con el nombre (alvaro) o con la sigla (AP).
+   IMPORTANTE: este archivo es público en Vercel; NO escribir aquí las contraseñas reales del Maestro. */
+const USERS = {
+  AP: { login: 'alvaro',   nombre: 'Alvaro',   pw: '1234', rol: 'Finanzas',   area: 'FINANZAS',    slot: 'AP'  },
+  SC: { login: 'santiago', nombre: 'Santiago', pw: '1234', rol: 'Subgerente', area: 'SUBGERENCIA', slot: 'SC'  },
+  TG: { login: 'thomas',   nombre: 'Thomas',   pw: '1234', rol: 'Gerente',    area: 'GERENCIA',    slot: 'GER' },
+  HL: { login: 'hans',     nombre: 'Hans',     pw: '1234', rol: 'Gerente',    area: 'GERENCIA',    slot: 'GER' }
+};
+const quien = u => USERS[u] ? `${USERS[u].nombre} (${u})` : u;           // "Alvaro (AP)"
+const firmaNombre = u => USERS[u] ? `${USERS[u].nombre} · ${u}` : u;     // "Alvaro · AP"
+const loginA = v => { v = String(v || '').trim().toLowerCase(); return Object.keys(USERS).find(k => k.toLowerCase() === v || USERS[k].login === v); };
+
+/* Carpetas del circuito (nombres exactos de la carpeta compartida) */
+const FOLDERS = {
+  INICIAL: 'DOCUMENTO INICIAL',
+  AP:      'FIRMADA POR AP',
+  SC:      'FIRMADA POR SC',
+  GER:     'FIRMA GERENTE',
+  FINAL:   'FACTURAS FIRMADAS'
+};
+const SYS_DIR = '_SISTEMA_VB';
+
+/* Posición FIJA de la franja de firmas en el PDF (puntos PDF; A4 = 595 x 842) */
+const PDF_SIG = { page: 0, margin: 36, bottom: 40, height: 118 };
+
+const ESTADOS = {
+  NUEVO:         { label: 'PENDIENTE · Nuevo',    cls: 'b-pend', ubic: 'AP - FINANZAS (Documento inicial)' },
+  POR_FIRMAR_AP: { label: 'PENDIENTE · Firma AP', cls: 'b-pend', ubic: 'AP - FINANZAS' },
+  PENDIENTE_SC:  { label: 'EN V°B° · SC',         cls: 'b-vb',   ubic: 'SC - SUBGERENCIA' },
+  DEVUELTO_AP:   { label: 'DEVUELTO · AP',        cls: 'b-dev',  ubic: 'AP - FINANZAS' },
+  PENDIENTE_TG:  { label: 'EN GERENCIA · TG',     cls: 'b-ger',  ubic: 'TG - GERENCIA' },
+  PENDIENTE_HL:  { label: 'EN GERENCIA · HL',     cls: 'b-ger',  ubic: 'HL - GERENCIA' },
+  APROBADO:      { label: 'APROBADO',             cls: 'b-ok',   ubic: 'FACTURAS FIRMADAS' },
+  NO_REQUIERE:   { label: 'SIN V°B°',             cls: 'b-na',   ubic: 'Archivo' }
+};
+
+const LS = { docs: 'vb_docs_v1' + SUF, firmas: 'vb_firmas_v1', session: 'vb_session_v1' + SUF };   // la firma (imagen) es de la persona, no de la empresa
+
+/* ---------------- Utilidades ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nowIso = () => new Date().toISOString();
+const pad2 = n => String(n).padStart(2, '0');
+const fmt = iso => { if (!iso) return ''; const d = new Date(iso); return `${pad2(d.getDate())}/${pad2(d.getMonth() + 1)}/${d.getFullYear()} ${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const hhmm = iso => { const d = new Date(iso); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`; };
+const clp = n => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Number(n) || 0);
+const safeName = s => String(s).trim().replace(/[\\/:*?"<>|]/g, '-');
+const pdfName = d => safeName(d.id) + '.pdf';
+const sinVB = d => d.requiereVB === false;
+
+function load(k, def) { try { const v = JSON.parse(localStorage.getItem(k)); return v ?? def; } catch (e) { return def; } }
+function save(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+  catch (e) { toast('No hay espacio suficiente en el almacenamiento local del navegador.', 'error'); return false; }
+}
+
+const ICONS = {
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
+  inbox: '<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  check: '<path d="M5 12l5 5 9-10"/>',
+  checkc: '<circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/>',
+  send: '<path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4z"/>',
+  archive: '<path d="M3 4h18v4H3z"/><path d="M5 8v12h14V8"/><path d="M10 12h4"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/>',
+  logout: '<path d="M9 21H5V3h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  file: '<path d="M14 3H6v18h12V7z"/><path d="M14 3v4h4"/>',
+  x: '<path d="M6 6l12 12M18 6L6 18"/>',
+  menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
+  print: '<path d="M6 9V3h12v6"/><path d="M6 18H4v-7h16v7h-2"/><path d="M8 14h8v7H8z"/>',
+  upload: '<path d="M12 16V4"/><path d="M7 9l5-5 5 5"/><path d="M4 20h16"/>',
+  download: '<path d="M12 4v12"/><path d="M7 11l5 5 5-5"/><path d="M4 20h16"/>',
+  alert: '<path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17v.5"/>',
+  history: '<path d="M3 12a9 9 0 109-9 9 9 0 00-7 3.5"/><path d="M3 4v4h4"/><path d="M12 7v5l3 2"/>',
+  pin: '<path d="M12 21s-7-6.2-7-11a7 7 0 0114 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  folder: '<path d="M3 6a1 1 0 011-1h5l2 2h9a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1z"/>',
+  sync: '<path d="M21 12a9 9 0 01-15.5 6.2"/><path d="M3 12A9 9 0 0118.5 5.8"/><path d="M18 2v4h-4M6 22v-4h4"/>',
+  ext: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v6H4V6h6"/>',
+  book: '<path d="M4 4h10a4 4 0 014 4v12H8a4 4 0 01-4-4z"/><path d="M4 16a4 4 0 014-4h10"/>'
+};
+const icon = n => `<svg class="i" viewBox="0 0 24 24">${ICONS[n] || ''}</svg>`;
+/* Integrado en el sitio "Maestro de Proveedores": usa su logo (/logo.png) y enlaza de vuelta. Abierto como archivo local, muestra el logo V°B°. */
+const EN_SITIO = /^https?:$/.test(location.protocol);
+const brandLogo = () => `<span class="lw">${EN_SITIO ? `<img class="brand-img" src="/logo.png" alt="MONFRUT" onload="this.parentNode.classList.add('has-img')" onerror="this.remove()">` : ''}<span class="logo">V°B°</span></span>`;
+const backLink = () => EN_SITIO && !EN_MARCO ? `<a class="back-link" href="/">← Portal de Finanzas</a>` : '';
+
+/* ================================================================
+   CARPETAS (File System Access API) — persistencia del handle en IndexedDB
+   ================================================================ */
+/* IndexedDB (cientos de MB disponibles): kv = ajustes, docs = registro de documentos, sigs = imágenes de firma */
+let _db = null;
+function idbOpen() {
+  if (_db) return Promise.resolve(_db);
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('vb-fs' + SUF, 2);   // un registro por empresa
+    r.onupgradeneeded = () => { for (const n of ['kv', 'docs', 'sigs']) if (!r.result.objectStoreNames.contains(n)) r.result.createObjectStore(n); };
+    r.onsuccess = () => { _db = r.result; res(_db); }; r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(k, st = 'kv') { const db = await idbOpen(); return new Promise(res => { const q = db.transaction(st).objectStore(st).get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); }
+async function idbSet(k, v, st = 'kv') { const db = await idbOpen(); return new Promise((res, rej) => { const t = db.transaction(st, 'readwrite'); t.objectStore(st).put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+async function idbDel(k, st = 'kv') { const db = await idbOpen(); return new Promise(res => { const t = db.transaction(st, 'readwrite'); t.objectStore(st).delete(k); t.oncomplete = res; t.onerror = res; }); }
+async function idbAll(st) { const db = await idbOpen(); return new Promise((res, rej) => { const q = db.transaction(st).objectStore(st).getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); }
+async function idbPutMany(st, items) { const db = await idbOpen(); return new Promise((res, rej) => { const t = db.transaction(st, 'readwrite'), o = t.objectStore(st); items.forEach(d => o.put(d, d.id)); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+async function idbClear(st) { const db = await idbOpen(); return new Promise(res => { const t = db.transaction(st, 'readwrite'); t.objectStore(st).clear(); t.oncomplete = res; t.onerror = res; }); }
+
+const FS = {
+  supported: typeof window.showDirectoryPicker === 'function',
+  root: null,
+  status: 'none',          // none | needs-permission | ready | unsupported
+  lastSync: null,
+  inbox: [],               // archivos en DOCUMENTO INICIAL sin registrar
+  counts: {},
+  sig: '',
+  ready() { return this.status === 'ready' && !!this.root; },
+
+  async init() {
+    if (!this.supported) { this.status = 'unsupported'; return; }
+    try {
+      const h = await idbGet('root'); if (!h) return;
+      this.root = h;
+      const p = h.queryPermission ? await h.queryPermission({ mode: 'readwrite' }) : 'granted';
+      this.status = p === 'granted' ? 'ready' : 'needs-permission';
+      if (this.ready()) await this.sync(true);
+    } catch (e) { this.status = 'none'; }
+  },
+  async connect() {
+    const h = await window.showDirectoryPicker({ id: 'vb-root' + SUF, mode: 'readwrite' });
+    await this.use(h);
+  },
+  async use(h) {
+    if (EMP_NOM && !carpetaEsDeEmpresa(h.name)) toast(`Ojo: la carpeta "${h.name}" no parece ser de ${EMP_NOM}. Revisa que sea la carpeta correcta.`, 'error');
+    this.root = h; this.status = 'ready';
+    try { await idbSet('root', h); } catch (e) { /* algunos handles (OPFS) no se pueden guardar */ }
+    for (const f of Object.values(FOLDERS)) await h.getDirectoryHandle(f, { create: true });
+    await h.getDirectoryHandle(SYS_DIR, { create: true });
+    await this.sync();
+    toast(`Carpeta "${h.name}" conectada.`, 'ok');
+  },
+  async reconnect() {
+    if (!this.root) return this.connect();
+    const p = await this.root.requestPermission({ mode: 'readwrite' });
+    if (p === 'granted') { this.status = 'ready'; await this.sync(); toast('Carpeta reconectada.', 'ok'); }
+  },
+  async disconnect() { await idbDel('root'); this.root = null; this.status = this.supported ? 'none' : 'unsupported'; this.inbox = []; render(); },
+  async dir(name) { let d = this.root; for (const part of name.split('/')) d = await d.getDirectoryHandle(part, { create: true }); return d; },
+  async sigDir() { return this.dir(SYS_DIR + '/_firmas'); },
+  rc: {},   // caché de registros leídos: nombre -> { t: lastModified, d: doc }
+  async writeFile(folder, name, data) {
+    const fh = await (await this.dir(folder)).getFileHandle(name, { create: true });
+    const w = await fh.createWritable(); await w.write(data); await w.close();
+  },
+  async readFile(folder, name) { return (await (await this.dir(folder)).getFileHandle(name)).getFile(); },
+  async list(folder) {
+    const out = [], d = await this.dir(folder);
+    for await (const [n, h] of d.entries()) if (h.kind === 'file' && !n.startsWith('~$') && !n.startsWith('.')) out.push(n);
+    return out.sort();
+  },
+  async saveDoc(doc) { await this.writeFile(SYS_DIR, safeName(doc.id) + '.json', JSON.stringify(doc, null, 1)); },
+
+  /* Mueve documentos creados en modo local hacia la carpeta */
+  async pushLocal(d) {
+    if (d.archivo && d.archivo.data) {
+      const ext = d.archivo.type === 'pdf' ? 'pdf' : 'jpg';
+      const name = `${safeName(d.id)}.${ext}`;
+      const blob = await (await fetch(d.archivo.data)).blob();
+      await this.writeFile(FOLDERS.INICIAL, name, blob);
+      d.archivo = { name, type: d.archivo.type, folder: 'INICIAL' };
+      d.archivos = { ...(d.archivos || {}), INICIAL: { name, fecha: nowIso() } };
+    }
+    await this.saveDoc(d);
+  },
+
+  /* Sincroniza registro local <-> carpeta. La versión con más historial gana. */
+  async sync(silent) {
+    if (!this.ready()) return;
+    try {
+      const remote = {}, sys = await this.dir(SYS_DIR);
+      for await (const [n, h] of sys.entries()) {
+        if (h.kind !== 'file' || !n.endsWith('.json')) continue;
+        try {
+          const f = await h.getFile(), c = this.rc[n];
+          if (c && c.t === f.lastModified) { remote[c.d.id] = c.d; continue; }   // sin cambios: no se vuelve a leer
+          const d = JSON.parse(await f.text()); if (d && d.id) { normalizeDoc(d); remote[d.id] = d; this.rc[n] = { t: f.lastModified, d }; }
+        } catch (e) { }
+      }
+      try { await SIGS.syncFolder(); } catch (e) { }
+      const map = {}; Store.docs().forEach(d => map[d.id] = JSON.parse(JSON.stringify(d)));
+      let changed = false;
+      for (const id in remote) if (!map[id] || newer(remote[id], map[id])) { map[id] = remote[id]; changed = true; }
+      for (const id in map) if (!remote[id] || newer(map[id], remote[id])) { await this.pushLocal(map[id]); changed = true; }
+      if (changed) Store.replaceAll(Object.values(map));
+
+      const all = Object.values(map);
+      const used = new Set(all.filter(d => d.archivo && d.archivo.folder).map(d => d.archivo.name));
+      this.inbox = (await this.list(FOLDERS.INICIAL))
+        .filter(n => /\.(pdf|jpe?g|png)$/i.test(n) && !used.has(n) && !map[n.replace(/\.[^.]+$/, '')]);
+      for (const k in FOLDERS) this.counts[k] = (await this.list(FOLDERS[k])).filter(n => /\.(pdf|jpe?g|png)$/i.test(n)).length;
+      try {
+        for await (const [n, h] of this.root.entries()) {
+          if (h.kind !== 'file' || !LIBRO_RX.test(n) || n.startsWith('~$')) continue;
+          const f = await h.getFile();
+          if (!LIBRO.meta || LIBRO.meta.file !== n || LIBRO.meta.mtime !== f.lastModified) {
+            const m = await LIBRO.fromFile(f, 'carpeta'); changed = true;
+            toast(`Libro de compras leído: ${m.rows} comprobantes (hasta N° ${m.maxCompte}).`, 'ok');
+          }
+          break;
+        }
+      } catch (e) { toast('No se pudo leer el libro de compras: ' + e.message, 'error'); }
+      this.lastSync = nowIso();
+      const sig = JSON.stringify([this.inbox, this.counts]);
+      if (changed || sig !== this.sig) { this.sig = sig; if (me()) { render(); refreshDocModal(); checkArrivals(); } }
+      else updateFsChip();
+    } catch (e) {
+      if (e && e.name === 'NotAllowedError') { this.status = 'needs-permission'; render(); }
+      else if (!silent) toast('Error al sincronizar carpeta: ' + e.message, 'error');
+    }
+  }
+};
+function carpetaEsDeEmpresa(n) { const a = norm(n), b = norm(EMP_NOM); return !!a && (b.includes(a) || a.includes(b)); }
+function newer(a, b) {
+  const la = (a.historial || []).length, lb = (b.historial || []).length;
+  return la > lb || (la === lb && (a.actualizado || '') > (b.actualizado || ''));
+}
+
+/* ================================================================
+   LIBRO DE COMPRAS (Excel) — enlace por N° de comprobante (# Compte)
+   Se lee automáticamente si en la carpeta raíz existe un archivo
+   "LIBRO DE COMPRAS.xlsx" (o se carga a mano). Índice guardado en IndexedDB.
+   ================================================================ */
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('No se pudo cargar ' + src)); document.head.appendChild(s); }); }
+const norm = v => String(v ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
+const LIBRO_RX = /libro.*compras.*\.xls[xm]?$/i;
+const LIBRO = {
+  meta: null, rows: {},
+  async init() { try { const v = await idbGet('libro'); if (v) { this.meta = v.meta; this.rows = v.rows; } } catch (e) { } },
+  loaded() { return !!this.meta; },
+  get(c) {
+    const r = this.rows[String(c ?? '').trim()]; if (!r) return null;
+    const [rut, nombre, docto, fDocto, fVencto, fCompte, glosa, cargos, abonos] = r;
+    return { compte: String(c).trim(), rut, nombre, docto, fDocto, fVencto, fCompte, glosa, cargos, abonos, monto: abonos || cargos };
+  },
+  async lib() {
+    if (window.XLSX) return;
+    for (const src of ['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js']) {
+      try { await loadScript(src); if (window.XLSX) return; } catch (e) { }
+    }
+    throw new Error('No se pudo cargar el lector de Excel (revisa la conexión a internet).');
+  },
+  async fromFile(file, origen) {
+    await this.lib();
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    let a = null, hi = -1, sheet = '';
+    for (const sn of wb.SheetNames) {
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], { header: 1, raw: true, defval: null });
+      const i = rows.slice(0, 30).findIndex(r => r && r.some(c => norm(c) === '# compte'));
+      if (i >= 0) { a = rows; hi = i; sheet = sn; break; }
+    }
+    if (!a) throw new Error('No se encontró la columna "# Compte" en el Excel.');
+    const H = a[hi].map(norm);
+    const col = (...names) => { for (const n of names) { const i = H.indexOf(n); if (i >= 0) return i; } for (const n of names) { const i = H.findIndex(h => h.includes(n)); if (i >= 0) return i; } return -1; };
+    const C = { rut: col('analisis', 'rut'), nombre: col('nombre o razon social', 'razon social', 'nombre'), docto: col('# docto'), fDocto: col('fecha docto'), fVencto: col('fecha vencto'),
+      compte: col('# compte'), fCompte: col('fecha compte'), glosa: col('glosa operacion', 'glosa'), cargos: col('cargos'), abonos: col('abonos') };
+    const clean = v => String(v ?? '').replace(/^'+/, '').trim();
+    const fecha = v => { if (v == null || v === '') return ''; if (typeof v === 'number') return new Date(Date.UTC(1899, 11, 30) + Math.round(v) * 86400000).toISOString().slice(0, 10); const d = new Date(v); return isNaN(d) ? String(v) : d.toISOString().slice(0, 10); };
+    const num = v => Number(String(v ?? 0).replace(/[^\d.-]/g, '')) || 0;
+    const rows = {}; let n = 0, maxC = 0, maxF = '';
+    for (let i = hi + 1; i < a.length; i++) {
+      const r = a[i]; if (!r) continue;
+      const c = clean(r[C.compte]); if (!c) continue;
+      const fc = fecha(r[C.fCompte]);
+      rows[c] = [clean(r[C.rut]).replace(/\/\d+$/, ''), clean(r[C.nombre]), clean(r[C.docto]), fecha(r[C.fDocto]), fecha(r[C.fVencto]), fc, clean(r[C.glosa]), num(r[C.cargos]), num(r[C.abonos])];
+      n++; if (Number(c) > maxC) maxC = Number(c); if (fc > maxF) maxF = fc;
+    }
+    this.rows = rows;
+    this.meta = { file: file.name, mtime: file.lastModified, rows: n, maxCompte: maxC, maxFecha: maxF, sheet, origen, cargado: nowIso() };
+    try { await idbSet('libro', { meta: this.meta, rows }); } catch (e) { }
+    return this.meta;
+  },
+  async clear() { this.meta = null; this.rows = {}; await idbDel('libro'); }
+};
+const fdate = s => s ? s.split('-').reverse().join('/') : '';
+function libroResumen(l) {
+  return `<b>${esc(l.nombre)}</b> · RUT ${esc(l.rut)}<br>Docto N° <b>${esc(l.docto)}</b> · ${fdate(l.fDocto)} · ${clp(l.monto)}<br><span class="muted">${esc(l.glosa)}</span>`;
+}
+
+/* ---------------- Store ---------------- */
+/* Firmas usadas en documentos: se guardan UNA vez (no se repiten dentro de cada documento).
+   Copia en IndexedDB y en la carpeta: _SISTEMA_VB/_firmas/<id>.png */
+const SIGS = {
+  cache: {},
+  id(user, img) { let h = 0x811c9dc5; for (let i = 0; i < img.length; i++) { h ^= img.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return `${user}-${h.toString(16)}`; },
+  async init() { try { (await idbAll('sigs')).forEach(x => { if (x && x.id) this.cache[x.id] = x.img; }); } catch (e) { } },
+  put(id, img) { if (this.cache[id]) return; this.cache[id] = img; idbSet(id, { id, img }, 'sigs').catch(() => { }); },
+  img(f) { return f ? (f.img || this.cache[f.sig] || '') : ''; },
+  async ensure(f) {
+    if (!f || f.img || this.cache[f.sig] || !FS.ready()) return;
+    try { const file = await (await FS.sigDir()).getFileHandle(f.sig + '.png').then(h => h.getFile()); this.put(f.sig, await readFile(file)); } catch (e) { }
+  },
+  /* Sube a la carpeta las firmas que falten y baja las que no estén en este navegador */
+  async syncFolder() {
+    const dir = await FS.sigDir(), there = new Set();
+    for await (const [n, h] of dir.entries()) {
+      if (h.kind !== 'file' || !n.endsWith('.png')) continue;
+      const id = n.slice(0, -4); there.add(id);
+      if (!this.cache[id]) this.put(id, await readFile(await h.getFile()));
+    }
+    for (const id in this.cache) if (!there.has(id)) await FS.writeFile(SYS_DIR + '/_firmas', id + '.png', await (await fetch(this.cache[id])).blob());
+  }
+};
+/* Saca las imágenes de firma de dentro del documento (formato antiguo) y deja solo la referencia */
+function normalizeDoc(d) {
+  for (const k in (d.firmas || {})) { const f = d.firmas[k]; if (f && f.img) { const id = SIGS.id(f.user, f.img); SIGS.put(id, f.img); delete f.img; f.sig = id; } }
+  return d;
+}
+const BC = 'BroadcastChannel' in window ? new BroadcastChannel('vb-docs' + SUF) : null;
+
+const Store = {
+  _docs: [], _map: {},
+  async init() {
+    let list = [];
+    try { list = await idbAll('docs'); } catch (e) { }
+    const legacy = load(LS.docs, null);          // migración desde la versión anterior (localStorage)
+    if (legacy && legacy.length) {
+      const m = {}; list.forEach(d => m[d.id] = d);
+      legacy.forEach(d => { if (!m[d.id] || newer(d, m[d.id])) m[d.id] = d; });
+      list = Object.values(m);
+    }
+    list.forEach(normalizeDoc); this._set(list);
+    if (legacy) { try { await idbPutMany('docs', list); localStorage.removeItem(LS.docs); } catch (e) { } }
+  },
+  _set(list) {
+    this._docs = list.sort((a, b) => (b.creado || '').localeCompare(a.creado || ''));
+    this._map = {}; list.forEach(d => this._map[d.id] = d);
+  },
+  async reload() { try { const l = await idbAll('docs'); l.forEach(normalizeDoc); this._set(l); } catch (e) { } },
+  docs() { return this._docs; },                                   // solo lectura
+  get(id) { const d = this._map[id]; return d ? JSON.parse(JSON.stringify(d)) : undefined; },   // copia para modificar
+  upsert(doc) {
+    normalizeDoc(doc);
+    if (this._map[doc.id]) this._docs[this._docs.findIndex(d => d.id === doc.id)] = doc; else this._docs.unshift(doc);
+    this._map[doc.id] = doc;
+    idbSet(doc.id, doc, 'docs').then(() => BC && BC.postMessage('upd')).catch(e => toast('No se pudo guardar en el navegador: ' + e.message, 'error'));
+    if (FS.ready()) FS.saveDoc(doc).catch(e => toast('No se pudo guardar el registro en la carpeta: ' + e.message, 'error'));
+    return true;
+  },
+  replaceAll(list) { list.forEach(normalizeDoc); this._set(list); idbPutMany('docs', list).then(() => BC && BC.postMessage('upd')).catch(() => { }); },
+  async clear() { this._set([]); await idbClear('docs'); },
+  firmas() { return load(LS.firmas, {}); },
+  firma(u) { return this.firmas()[u] || null; },
+  setFirma(u, img) { const f = this.firmas(); f[u] = { img, fecha: nowIso() }; return save(LS.firmas, f); }
+};
+
+/* ---------------- Estado de la UI ---------------- */
+const state = { user: EN_PORTAL ? null : load(LS.session, null), view: 'inicio', docId: null, pickG: null, q: '', selId: null,
+  started: false, known: new Set(), knownFiles: new Set(), skipped: new Set() };
+const me = () => state.user;
+
+/* ---------------- Bandejas por usuario ---------------- */
+function bandejasDe(u) {
+  if (u === 'AP') return [
+    { key: 'nuevos', label: 'Documentos nuevos', icon: 'inbox', hint: 'Decidir V°B° o firmar', accion: true, f: d => ['NUEVO', 'POR_FIRMAR_AP'].includes(d.estado) },
+    { key: 'pendientes', label: 'Pendientes', icon: 'clock', hint: 'Esperando V°B° de SC', f: d => d.estado === 'PENDIENTE_SC' },
+    { key: 'recibidos', label: 'V°B° recibidos', icon: 'checkc', hint: 'Listos para Gerencia', accion: true, f: d => d.estado === 'DEVUELTO_AP' },
+    { key: 'gerencia', label: 'Enviados a Gerencia', icon: 'send', hint: 'En firma TG / HL', f: d => ['PENDIENTE_TG', 'PENDIENTE_HL'].includes(d.estado) },
+    { key: 'finalizados', label: 'Finalizados', icon: 'archive', hint: 'En FACTURAS FIRMADAS', f: d => ['APROBADO', 'NO_REQUIERE'].includes(d.estado) }
+  ];
+  if (u === 'SC') return [
+    { key: 'pend', label: 'Pendientes de V°B°', icon: 'inbox', hint: 'Requieren tu V°B°', accion: true, f: d => d.estado === 'PENDIENTE_SC' },
+    { key: 'aprob', label: 'Aprobados anteriormente', icon: 'checkc', hint: 'Con tu V°B°', f: d => !!d.firmas.SC }
+  ];
+  return [
+    { key: 'pend', label: 'Pendientes de firma', icon: 'inbox', hint: 'Requieren tu firma', accion: true, f: d => d.estado === 'PENDIENTE_' + u },
+    { key: 'firm', label: 'Firmados', icon: 'checkc', hint: 'Firmados por ti', f: d => d.firmas.GER && d.firmas.GER.user === u }
+  ];
+}
+
+function hist(d, user, accion, fecha) {
+  if (USERS[user] && accion.startsWith(user + ' ')) accion = quien(user) + accion.slice(user.length);
+  d.historial.push({ fecha: fecha || nowIso(), user, accion });
+  d.actualizado = fecha || nowIso();
+}
+
+/* ---------------- Toasts / ocupado ---------------- */
+function toast(msg, type = '') {
+  const el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML = `${icon(type === 'ok' ? 'checkc' : type ? 'alert' : 'history')}<span>${esc(msg)}</span>`;
+  const box = $('#toasts'); box.appendChild(el);
+  while (box.children.length > 3) box.firstElementChild.remove();
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = '.3s'; setTimeout(() => el.remove(), 300); }, 3600);
+}
+function busy(msg) {
+  const old = $('#busy'); if (old) old.remove();
+  if (!msg) return;
+  const el = document.createElement('div'); el.id = 'busy'; el.className = 'busy';
+  el.innerHTML = `<div class="spin"></div><div>${esc(msg)}</div>`; document.body.appendChild(el);
+}
+
+/* ---------------- Modales ---------------- */
+function openModal(key, html) {
+  closeModal(key);
+  const bd = document.createElement('div');
+  bd.className = 'backdrop'; bd.dataset.key = key; bd.innerHTML = html;
+  bd.addEventListener('mousedown', e => { if (e.target === bd) closeModal(key); });
+  $('#modals').appendChild(bd);
+  return bd;
+}
+function closeModal(key) {
+  const el = document.querySelector(`.backdrop[data-key="${key}"]`);
+  if (el) el.remove();
+  if (key === 'doc') { state.docId = null; state.pickG = null; }
+}
+let confirmCb = null;
+function confirmBox(msg, onOk, okLabel = 'Confirmar') {
+  confirmCb = onOk;
+  openModal('confirm', `<div class="modal modal-sm">
+    <div class="modal-head"><h3>Confirmar acción</h3></div>
+    <div class="modal-body"><p style="margin:0">${esc(msg)}</p></div>
+    <div class="modal-foot"><button class="btn" data-act="close" data-key="confirm">Cancelar</button>
+    <button class="btn primary" data-act="confirm-ok">${esc(okLabel)}</button></div></div>`);
+}
+
+/* ================================================================
+   RENDER
+   ================================================================ */
+function render() {
+  const app = $('#app');
+  if (EN_PORTAL && !me()) { app.innerHTML = portalView(); return; }
+  if (!me()) { app.innerHTML = loginView(); wireLogin(); return; }
+  app.innerHTML = shellView();
+  if (state.view === 'buscar') wireSearch();
+  if (state.view === 'libro') wireLibro();
+}
+
+/* ---------- Sesión desde el portal ---------- */
+const PORTAL = { estado: null, msg: 'Verificando tu sesión del portal…' };
+function rolDe(e) {
+  if (ROL_PORTAL[e.usuario]) return ROL_PORTAL[e.usuario];
+  const t = ' ' + norm(`${e.usuario} ${e.nombre || ''}`).replace(/[^a-z0-9]+/g, ' ') + ' ';
+  for (const [u, x] of Object.entries(USERS)) if (t.includes(' ' + x.login + ' ')) return u;
+  return null;
+}
+async function portalLogin() {
+  let cred = {};
+  try { cred = { u: sessionStorage.getItem('usuario'), c: sessionStorage.getItem('clave') }; } catch (e) { }
+  if (!cred.u || !cred.c) { PORTAL.msg = 'Abre esta sección desde el Portal de Finanzas (menú “Firma de facturas”), con tu usuario.'; render(); return; }
+  try {
+    const r = await fetch('/api/datos?v=estado', { headers: { 'x-usuario': encodeURIComponent(cred.u), 'x-clave': encodeURIComponent(cred.c), ...(EMP ? { 'x-empresa': String(EMP) } : {}) } });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'No se pudo validar la sesión.');
+    PORTAL.estado = j;
+    if (!j.admin && !(j.paginas || []).includes('vbfirmas')) { PORTAL.msg = 'Tu usuario no tiene permiso para Firma de facturas. Pídelo al administrador del portal.'; render(); return; }
+    const u = rolDe(j);
+    if (!u) { PORTAL.msg = `Tu usuario (${j.nombre || j.usuario}) no participa en el circuito V°B°. Firman: Alvaro (AP), Santiago (SC), Thomas (TG) y Hans (HL).`; render(); return; }
+    state.user = u; state.view = 'inicio'; render();
+    Promise.resolve(FS.sync(true)).finally(startQueue);
+  } catch (e) { PORTAL.msg = e.message; render(); }
+}
+function portalView() {
+  return `<div class="login-wrap"><div class="login-card">
+    <div class="brand-lg">${brandLogo()}<div><h1>Circuito V°B°</h1><p>Firma y visto bueno de facturas${EMP_NOM ? ' · ' + esc(EMP_NOM) : ''}</p></div></div>
+    <p style="margin:6px 0 0">${esc(PORTAL.msg)}</p>
+    ${EN_MARCO ? '' : `<div style="text-align:center;margin-top:16px"><a class="link small" href="/" style="text-decoration:none">← Ir al Portal de Finanzas</a></div>`}
+  </div></div>`;
+}
+
+/* ---------- Login (solo cuando se abre como archivo local) ---------- */
+function loginView() {
+  return `<div class="login-wrap"><div class="login-card">
+    <div class="brand-lg">${brandLogo()}<div><h1>Circuito V°B°</h1><p>Firma y visto bueno de facturas${EN_SITIO ? ' · MONFRUT' : ''}</p></div></div>
+    <form id="loginForm" autocomplete="off">
+      <label class="field"><span>Usuario</span><input class="input" id="lu" placeholder="Ej: alvaro" autocomplete="username"></label>
+      <label class="field"><span>Contraseña</span><input class="input" id="lp" type="password" placeholder="••••" autocomplete="current-password"></label>
+      <div class="err" id="lerr"></div>
+      <button class="btn primary block lg" type="submit">Ingresar</button>
+    </form>
+    <div class="demo-users">
+      <div class="muted small">Usuarios de demostración · contraseña <b>1234</b> · clic para completar</div>
+      <div class="chips">${Object.entries(USERS).map(([u, x]) => `
+        <button class="chip" data-act="quick-user" data-u="${u}"><span class="avatar av-${u}">${u}</span><span><b>${x.nombre}</b><small>${u} · ${x.rol}</small></span></button>`).join('')}
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:18px"><button class="link small" data-act="reset-demo">Reiniciar datos de demostración</button></div>
+    ${EN_SITIO ? `<div style="text-align:center;margin-top:10px"><a class="link small" href="/" style="text-decoration:none">← Volver al Maestro de Proveedores</a></div>` : ''}
+  </div><p class="login-foot">Prototipo · datos en este navegador${FS.root ? ` y en la carpeta "${esc(FS.root.name)}"` : ''}</p></div>`;
+}
+function wireLogin() {
+  $('#loginForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const u = loginA($('#lu').value), p = $('#lp').value;
+    if (!USERS[u] || USERS[u].pw !== p) { $('#lerr').textContent = 'Usuario o contraseña incorrectos.'; return; }
+    state.user = u; state.view = 'inicio'; save(LS.session, u); render();
+    toast(`Sesión iniciada: ${quien(u)} · ${USERS[u].rol}`, 'ok');
+    Promise.resolve(FS.sync(true)).finally(startQueue);
+  });
+}
+
+/* ---------- Shell ---------- */
+function fsChip() {
+  if (FS.status === 'ready') return `<button class="fs-chip ok" id="fsChip" data-act="nav" data-view="carpetas" title="Carpeta conectada">${icon('folder')}<span class="led"></span><span class="fs-txt">${esc(FS.root.name)}${FS.lastSync ? ' · ' + hhmm(FS.lastSync) : ''}</span></button>`;
+  if (FS.status === 'needs-permission') return `<button class="fs-chip warn" id="fsChip" data-act="fs-reconnect">${icon('folder')}<span class="led"></span><span class="fs-txt">Reconectar "${esc(FS.root.name)}"</span></button>`;
+  return `<button class="fs-chip" id="fsChip" data-act="nav" data-view="carpetas">${icon('folder')}<span class="led"></span><span class="fs-txt">Sin carpeta</span></button>`;
+}
+function updateFsChip() { const c = $('#fsChip'); if (c) c.outerHTML = fsChip(); }
+
+function shellView() {
+  const u = me(), docs = Store.docs(), bands = bandejasDe(u);
+  const nav = (view, label, ic, count, hot) => `<button class="nav-item ${state.view === view ? 'active' : ''}" data-act="nav" data-view="${view}">${icon(ic)}<span>${label}</span>${count != null ? `<span class="count ${hot && count ? 'hot' : ''}">${count}</span>` : ''}</button>`;
+  return `<div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="side-brand">${brandLogo()}<div><b>Circuito V°B°</b><small>Firma de facturas</small></div></div>
+      ${nav('inicio', 'Inicio', 'home')}
+      <div class="nav-label">Mis bandejas</div>
+      ${bands.map(b => nav('b:' + b.key, b.label, b.icon, docs.filter(b.f).length + (u === 'AP' && b.key === 'nuevos' ? FS.inbox.length : 0), b.accion)).join('')}
+      <div class="nav-label">Herramientas</div>
+      ${nav('buscar', 'Buscar documento', 'search')}
+      ${nav('libro', 'Libro de compras', 'book', LIBRO.loaded() ? null : '!', false)}
+      ${nav('firma', 'Mi firma', 'pen', Store.firma(u) ? null : '!', true)}
+      ${nav('carpetas', 'Carpetas', 'folder', FS.status === 'ready' ? null : '!', FS.status === 'needs-permission')}
+      <div style="margin-top:auto">${backLink()}</div>
+      <div class="side-foot" style="margin-top:0">${EMP_NOM ? esc(EMP_NOM) + '<br>' : ''}${FS.ready() ? 'Carpeta: ' + esc(FS.root.name) : 'Sin carpeta conectada'}</div>
+    </aside>
+    <div class="overlay" id="overlay" data-act="menu"></div>
+    <div class="main">
+      <header class="topbar">
+        <button class="btn ghost menu-btn" data-act="menu" aria-label="Menú">${icon('menu')}</button>
+        ${fsChip()}
+        <div class="who">
+          <span class="avatar av-${u}">${u}</span>
+          <div class="who-text">Usuario conectado: <b>${USERS[u].nombre}</b> (${u})<br><span class="muted"><span class="role-l">Rol: </span><b>${USERS[u].rol}</b></span></div>
+          ${EN_PORTAL ? '' : `<button class="btn" data-act="logout">${icon('logout')}<span>Cerrar sesión</span></button>`}
+        </div>
+      </header>
+      <main class="content">${contentView()}</main>
+    </div>
+  </div>`;
+}
+
+function contentView() {
+  const v = state.view;
+  if (v === 'inicio') return dashboardView();
+  if (v === 'buscar') return searchView();
+  if (v === 'firma') return firmaView();
+  if (v === 'carpetas') return carpetasView();
+  if (v === 'libro') return libroView();
+  if (v.startsWith('b:')) return bandejaView(v.slice(2));
+  return '';
+}
+
+/* ---------- Archivos en DOCUMENTO INICIAL sin registrar ---------- */
+function inboxBlock() {
+  if (me() !== 'AP' || !FS.inbox.length) return '';
+  return `<div class="section-title"><h2>${icon('folder')} En "${FOLDERS.INICIAL}" sin registrar</h2><span class="muted small">${FS.inbox.length} archivo(s)</span></div>
+    <div class="inbox-list">${FS.inbox.map(n => `<div class="inbox-item">${icon('file')}<div class="grow"><b>${esc(n)}</b><div class="small" style="margin-top:2px">${(() => { const id = n.replace(/\.[^.]+$/, ''), l = LIBRO.get(id); return l ? `Comp. ${esc(id)} · ${esc(l.nombre)} · Docto ${esc(l.docto)} · ${clp(l.monto)}` : `<span class="muted">Comp. ${esc(id)} · ${LIBRO.loaded() ? 'no está en el libro de compras' : 'libro de compras no cargado'}</span>`; })()}</div></div>
+      <button class="btn primary sm" data-act="import" data-name="${esc(n)}">${icon('plus')} Registrar</button></div>`).join('')}</div>`;
+}
+function fsBanner() {
+  if (FS.status === 'needs-permission') return `<div class="banner">${icon('folder')}<div class="grow"><b>La carpeta "${esc(FS.root.name)}" necesita permiso de nuevo.</b><br><span class="small">Chrome pide confirmarlo cada vez que se abre el archivo.</span></div><button class="btn warn" data-act="fs-reconnect">Reconectar carpeta</button></div>`;
+  return '';
+}
+
+/* ---------- Dashboard ---------- */
+function dashboardView() {
+  const u = me(), docs = Store.docs(), bands = bandejasDe(u);
+  const accion = docs.filter(d => bands.some(b => b.accion && b.f(d)));
+  const actividad = docs.flatMap(d => d.historial.filter(h => h.user !== 'SISTEMA' || /APROBADO|FINALIZADO|devuelto/i.test(h.accion)).map(h => ({ ...h, id: d.id }))).sort((a, b) => b.fecha.localeCompare(a.fecha)).slice(0, 8);
+  return `
+  <div class="page-head"><div><h1>Hola, ${USERS[u].nombre}</h1><p>${USERS[u].rol} · ${new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p></div>
+    ${u === 'AP' ? `<button class="btn primary lg" data-act="new-doc">${icon('plus')} Ingresar documento</button>` : ''}</div>
+  ${fsBanner()}
+  ${Store.firma(u) ? '' : `<div class="banner">${icon('alert')}<div class="grow"><b>Aún no has cargado tu firma.</b><br><span class="small">La necesitas para firmar o dar V°B°. Se carga una sola vez.</span></div><button class="btn primary" data-act="firma-modal">${icon('upload')} Cargar mi firma</button></div>`}
+  <div class="stats">${bands.map(b => { const n = docs.filter(b.f).length; return `
+    <button class="stat ${b.accion && n ? 'hot' : ''}" data-act="nav" data-view="b:${b.key}">
+      <span class="ic">${icon(b.icon)}</span><span class="n">${n}</span><span class="l">${b.label}</span><span class="h">${b.hint}</span></button>`; }).join('')}
+  </div>
+  ${inboxBlock()}
+  <div class="grid-2">
+    <div><div class="section-title"><h2>Requieren tu acción</h2>${accion.length ? `<button class="btn primary sm" data-act="start-next">${icon('pen')} Empezar a firmar (${accion.length})</button>` : ''}</div>
+      ${accion.length ? docTable(myQueue(), '') : `<div class="empty" style="border-color:#9fd5b2;background:var(--ok-soft);color:var(--ok)">${icon('checkc')}<div><b>Todo firmado por el momento.</b><br><span class="small">Cuando llegue un documento se abrirá automáticamente.</span></div></div>`}</div>
+    <div><div class="section-title"><h2>Actividad reciente</h2></div>
+      <div class="card">${actividad.length ? `<ul class="timeline">${actividad.map(h => `
+        <li class="${/APROBADO|FINALIZADO/.test(h.accion) ? 'ok' : ''}"><div class="t-date">${fmt(h.fecha)} · <span class="t-id">Comp. ${esc(h.id)}</span></div><div class="t-text">${esc(h.accion)}</div></li>`).join('')}</ul>`
+        : '<div class="muted small">Sin movimientos todavía.</div>'}</div></div>
+  </div>`;
+}
+
+/* ---------- Bandeja ---------- */
+function bandejaView(key) {
+  const b = bandejasDe(me()).find(x => x.key === key); if (!b) return '';
+  const list = Store.docs().filter(b.f).sort((a, c) => (c.actualizado || '').localeCompare(a.actualizado || ''));
+  return `<div class="page-head"><div><h1>${b.label}</h1><p>${b.hint}</p></div>
+    ${me() === 'AP' && key === 'nuevos' ? `<button class="btn primary lg" data-act="new-doc">${icon('plus')} Ingresar documento</button>` : ''}</div>
+    ${fsBanner()}${key === 'nuevos' ? inboxBlock() : ''}
+    ${docTable(list, 'No hay documentos en esta bandeja.')}`;
+}
+
+function sigDots(d) {
+  const g = d.firmas.GER ? d.firmas.GER.user : (d.gerente || 'G'), na = sinVB(d) ? 'na' : '';
+  return `<span class="dots"><span class="dot ${d.firmas.AP ? 'on' : ''}" title="AP">AP</span><span class="dot ${d.firmas.SC ? 'on' : na}" title="SC">SC</span><span class="dot ${d.firmas.GER ? 'on' : na}" title="Gerencia">${esc(g)}</span></span>`;
+}
+function badge(d) {
+  let { label, cls } = ESTADOS[d.estado];
+  if (sinVB(d) && d.estado === 'POR_FIRMAR_AP') label = 'PENDIENTE · Firma AP (sin V°B°)';
+  if (sinVB(d) && d.estado === 'APROBADO') label = 'APROBADO · SOLO AP';
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+
+function docTable(list, emptyMsg) {
+  if (!list.length) return `<div class="empty">${icon('inbox')}<div>${emptyMsg}</div></div>`;
+  return `<div class="table-wrap"><table class="tbl"><thead><tr>
+    <th>N° Comp.</th><th>Factura</th><th>Proveedor</th><th class="hide-sm">OC</th><th class="r">Monto</th><th>Estado</th><th class="hide-sm">Firmas</th><th class="hide-sm">Actualizado</th></tr></thead><tbody>
+    ${list.map(d => `<tr data-act="open" data-id="${esc(d.id)}">
+      <td class="mono">${esc(d.id)}</td><td>${esc(d.factura)}</td><td>${esc(d.proveedor)}</td><td class="hide-sm">${esc(d.oc)}</td>
+      <td class="r">${clp(d.monto)}</td><td>${badge(d)}</td><td class="hide-sm">${sigDots(d)}</td><td class="hide-sm muted small">${fmt(d.actualizado)}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+/* ---------- Mi firma ---------- */
+function firmaView() {
+  const u = me(), f = Store.firma(u), slot = USERS[u].slot;
+  const demo = { firmas: f ? { [slot]: { user: u, img: f.img, fecha: f.fecha } } : {}, gerente: slot === 'GER' ? u : null };
+  return `<div class="page-head"><div><h1>Mi firma</h1><p>Se carga una sola vez y se usa automáticamente al firmar o dar V°B°.</p></div></div>
+  <div class="grid-2">
+    <div class="card"><h3>Firma actualmente registrada</h3>
+      <div class="sig-current checker">${f ? `<img src="${f.img}" alt="Firma de ${u}">` : `<div class="muted" style="text-align:center">${icon('pen')}<br>Sin firma registrada</div>`}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span class="muted small">${f ? 'Registrada el ' + fmt(f.fecha) : 'Formato recomendado: PNG con fondo transparente'}</span>
+        <button class="btn primary" data-act="firma-modal">${icon('upload')} Cargar / Cambiar firma</button></div>
+    </div>
+    <div class="card"><h3>Así aparecerá en los documentos</h3>
+      <div class="sig-zone" style="background:#fff">${sigSlots(demo)}</div>
+      <ul class="tips">
+        <li>Posición <b>fija</b>: tu firma siempre va en el espacio <b>${USERS[u].area}</b>, en la parte inferior de la página 1 del PDF.</li>
+        <li>Idealmente PNG con fondo transparente. Si subes JPG, el sistema puede eliminar el fondo blanco.</li>
+        <li>Cambiar la firma no modifica documentos ya firmados (cada documento guarda su copia).</li>
+      </ul>
+    </div>
+  </div>`;
+}
+
+/* ---------- Libro de compras ---------- */
+function libroView() {
+  const m = LIBRO.meta;
+  const st = m ? `<div class="banner info">${icon('book')}<div class="grow"><b>${esc(m.file)}</b> · ${m.rows.toLocaleString('es-CL')} comprobantes · hasta N° <b>${m.maxCompte}</b> (${fdate(m.maxFecha)})<br><span class="small">Leído ${m.origen === 'carpeta' ? 'desde la carpeta' : 'manualmente'} el ${fmt(m.cargado)}${m.origen === 'carpeta' ? ' · se vuelve a leer solo cuando el archivo cambia' : ''}.</span></div>
+      <label class="btn">${icon('upload')} Cargar otro Excel<input type="file" id="libroFile" accept=".xlsx,.xlsm,.xls" hidden></label></div>`
+    : `<div class="banner">${icon('book')}<div class="grow"><b>No hay libro de compras cargado.</b><br><span class="small">${FS.ready() ? `Deja el archivo <b>LIBRO DE COMPRAS.xlsx</b> en la carpeta "${esc(FS.root.name)}" o cárgalo aquí.` : 'Cárgalo aquí o conecta la carpeta que lo contiene.'}</span></div>
+      <label class="btn primary">${icon('upload')} Cargar Excel<input type="file" id="libroFile" accept=".xlsx,.xlsm,.xls" hidden></label></div>`;
+  return `<div class="page-head"><div><h1>Libro de compras</h1><p>Cada documento del circuito se enlaza por su <b>N° de comprobante</b> (# Compte).</p></div></div>
+    ${st}
+    ${m ? `<div class="search-hero">${icon('search')}<input id="lq" class="search-big" placeholder="Consultar N° de comprobante" inputmode="numeric" autocomplete="off"></div><div id="lres"></div>` : ''}`;
+}
+function libroLookup(id) {
+  id = String(id || '').trim(); if (!id) return '';
+  const l = LIBRO.get(id), d = Store.get(id), enCarpeta = FS.inbox.find(n => n.replace(/\.[^.]+$/, '') === id);
+  if (!l) return `<div class="empty">${icon('search')}<div>El comprobante ${esc(id)} no está en el libro de compras.</div></div>`;
+  return `<div class="card"><div class="muted small">N° Comprobante</div><div class="big-id mono" style="font-size:22px;font-weight:800">${esc(id)}</div>
+    <dl class="kv" style="margin:12px 0"><dt>Proveedor</dt><dd>${esc(l.nombre)}</dd><dt>RUT</dt><dd>${esc(l.rut)}</dd><dt>N° Docto</dt><dd>${esc(l.docto)}</dd>
+    <dt>Fecha docto</dt><dd>${fdate(l.fDocto)}</dd><dt>Vencimiento</dt><dd>${fdate(l.fVencto)}</dd><dt>Fecha comp.</dt><dd>${fdate(l.fCompte)}</dd><dt>Glosa</dt><dd>${esc(l.glosa)}</dd>
+    <dt>Cargos</dt><dd>${clp(l.cargos)}</dd><dt>Abonos</dt><dd>${clp(l.abonos)}</dd></dl>
+    ${d ? `<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">En el circuito: ${badge(d)} <button class="btn sm" data-act="open" data-id="${esc(id)}">${icon('file')} Ver documento</button></div>`
+      : me() === 'AP' ? (enCarpeta ? `<button class="btn primary" data-act="import" data-name="${esc(enCarpeta)}">${icon('plus')} Registrar ${esc(enCarpeta)} en el circuito</button>`
+        : `<button class="btn primary" data-act="new-doc-id" data-id="${esc(id)}">${icon('plus')} Ingresar al circuito</button>`) : '<span class="muted small">Aún no ingresa al circuito.</span>'}</div>`;
+}
+
+/* ---------- Carpetas ---------- */
+function carpetasView() {
+  const c = k => FS.ready() ? `<small>${FS.counts[k] ?? 0} archivo(s)</small>` : '<small>&nbsp;</small>';
+  const node = (k, who, fin) => `<div class="node ${fin ? 'final' : ''}"><span class="who">${who}</span><b>${FOLDERS[k]}</b>${c(k)}</div>`;
+  const arrow = '<span class="arrow">→</span>';
+  let status;
+  if (FS.status === 'unsupported') status = `<div class="banner">${icon('alert')}<div class="grow"><b>Este navegador no permite conectar carpetas.</b><br><span class="small">Abre el archivo en Google Chrome o Microsoft Edge (computador).</span></div></div>`;
+  else if (FS.status === 'ready') status = `<div class="banner info">${icon('folder')}<div class="grow"><b>Conectado a "${esc(FS.root.name)}"</b><br><span class="small">Última sincronización: ${FS.lastSync ? fmt(FS.lastSync) : '—'} · se sincroniza sola cada 15 s y al volver a la ventana.</span></div>
+      <button class="btn" data-act="fs-sync">${icon('sync')} Sincronizar</button><button class="btn" data-act="fs-connect">Cambiar carpeta</button><button class="btn ghost" data-act="fs-disconnect">Desconectar</button></div>`;
+  else if (FS.status === 'needs-permission') status = fsBanner();
+  else status = `<div class="banner">${icon('folder')}<div class="grow"><b>No hay carpeta conectada.</b><br><span class="small">Selecciona la carpeta de la empresa${EMP_NOM ? ' <b>' + esc(EMP_NOM) + '</b>' : ''} dentro de <b>SISTEMA FIRMAS FACTURAS</b> (ej. <b>SANTA ANA</b>, <b>MONFRUT</b> o <b>BONATERRA</b>). Si faltan subcarpetas, se crean automáticamente.</span></div><button class="btn primary" data-act="fs-connect">${icon('folder')} Conectar carpeta</button></div>`;
+  return `<div class="page-head"><div><h1>Carpetas</h1><p>Cada paso del circuito deja una copia del PDF firmado en su carpeta.</p></div></div>
+  ${status}
+  <div class="card" style="margin-bottom:18px"><h3>Facturas con V°B°</h3>
+    <div class="flow">${node('INICIAL', 'AP INGRESA')}${arrow}${node('AP', 'AP FIRMA')}${arrow}${node('SC', 'SC DA V°B°')}${arrow}<div class="node"><span class="who">AP</span><b>Elige TG o HL</b><small>sin carpeta</small></div>${arrow}${node('GER', 'TG / HL FIRMA')}${arrow}${node('FINAL', 'FINAL', true)}</div></div>
+  <div class="card" style="margin-bottom:18px"><h3>Facturas sin V°B° (solo firma AP)</h3>
+    <div class="flow">${node('INICIAL', 'AP INGRESA')}${arrow}${node('AP', 'AP FIRMA')}${arrow}${node('FINAL', 'FINAL', true)}</div></div>
+  <div class="card"><h3>Cómo funciona</h3><ul class="tips" style="margin-top:0">
+    <li>Los archivos se nombran con el <b>ID único</b>: <span class="mono">24350.pdf</span>. El mismo nombre se repite en cada carpeta.</li>
+    <li>Puedes dejar el PDF directamente en <b>${FOLDERS.INICIAL}</b>: aparecerá en la bandeja de AP como “sin registrar”.</li>
+    <li>Cada carpeta conserva su versión (copia): así queda evidencia de quién firmó en cada etapa.</li>
+    <li>El estado y el historial se guardan en <span class="mono">${SYS_DIR}</span> dentro de la misma carpeta. No borres esa carpeta.</li>
+    <li>Para que SC, TG y HL trabajen desde sus computadores: compartir la carpeta por OneDrive/SharePoint con permiso de edición, y cada uno conecta su copia sincronizada en esta pantalla.</li>
+  </ul></div>`;
+}
+
+/* ---------- Zona de firmas (posiciones fijas) ---------- */
+function sigSlots(d) {
+  const slots = [
+    { key: 'AP', area: 'FINANZAS', who: firmaNombre('AP') },
+    { key: 'SC', area: 'SUBGERENCIA', who: firmaNombre('SC') },
+    { key: 'GER', area: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }
+  ];
+  return slots.map(s => {
+    const f = d.firmas[s.key], na = !f && sinVB(d) && s.key !== 'AP';
+    return `<div class="sig-slot ${f ? 'signed' : ''} ${na ? 'na' : ''}">
+      <div class="sig-area">${s.area}</div>
+      <div class="sig-img">${f ? (SIGS.img(f) ? `<img src="${SIGS.img(f)}" alt="Firma ${esc(f.user)}">` : `<span class="sig-pend" style="color:var(--ok)">✓ firmado</span>`) : `<span class="sig-pend">${na ? 'no requiere' : 'pendiente'}</span>`}</div>
+      <div class="sig-line"></div>
+      <div class="sig-name">${na ? '—' : esc(s.who)}</div>
+      <div class="sig-date">${f ? fmt(f.fecha) : ''}</div></div>`;
+  }).join('');
+}
+
+/* ================================================================
+   PDF: obtener original, estampar firmas (pdf-lib)
+   ================================================================ */
+async function getOriginal(d) {
+  if (!d.archivo) throw new Error('El documento no tiene archivo adjunto.');
+  if (d.archivo.folder) {
+    if (!FS.ready()) throw new Error('Conecta la carpeta para leer el archivo original.');
+    const f = await FS.readFile(FOLDERS.INICIAL, d.archivo.name);
+    return { bytes: await f.arrayBuffer(), type: d.archivo.type, mime: f.type || (d.archivo.type === 'pdf' ? 'application/pdf' : 'image/jpeg') };
+  }
+  const r = await fetch(d.archivo.data);
+  return { bytes: await r.arrayBuffer(), type: d.archivo.type, mime: d.archivo.data.slice(5, d.archivo.data.indexOf(';')) };
+}
+const winAnsi = s => String(s ?? '').replace(/[^\x20-\x7E -ÿ]/g, '?');
+
+async function drawSigStrip(pdf, d) {
+  const { StandardFonts, rgb } = PDFLib;
+  const page = pdf.getPage(Math.min(PDF_SIG.page, pdf.getPageCount() - 1));
+  const { width } = page.getSize();
+  const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const x0 = PDF_SIG.margin, y0 = PDF_SIG.bottom, W = width - 2 * x0, H = PDF_SIG.height, cw = W / 3;
+  const ink = rgb(0.1, 0.14, 0.19), gray = rgb(0.45, 0.49, 0.55), green = rgb(0.08, 0.5, 0.24);
+  const center = (txt, f, size, cx, y, color) => { txt = winAnsi(txt); page.drawText(txt, { x: cx - f.widthOfTextAtSize(txt, size) / 2, y, size, font: f, color }); };
+
+  page.drawText(winAnsi(`CIRCUITO V°B° · COMP. ${d.id} · ${d.proveedor} · Factura ${d.factura}${d.oc ? ' · OC ' + d.oc : ''}${sinVB(d) ? ' · NO REQUIERE V°B°' : ''}`), { x: x0, y: y0 + H + 5, size: 7, font: bold, color: gray });
+  page.drawRectangle({ x: x0, y: y0, width: W, height: H, borderColor: ink, borderWidth: 1 });
+  const slots = [{ k: 'AP', t: 'FINANZAS', who: firmaNombre('AP') }, { k: 'SC', t: 'SUBGERENCIA', who: firmaNombre('SC') }, { k: 'GER', t: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }];
+  for (let i = 0; i < 3; i++) {
+    const s = slots[i], cx = x0 + i * cw, mid = cx + cw / 2, f = d.firmas[s.k], na = !f && sinVB(d) && s.k !== 'AP';
+    if (i > 0) page.drawLine({ start: { x: cx, y: y0 + 6 }, end: { x: cx, y: y0 + H - 6 }, thickness: 0.5, color: gray });
+    center(s.t, bold, 8, mid, y0 + H - 14, f ? green : ink);
+    const boxW = cw - 24, boxH = H - 58, boxY = y0 + 36;
+    if (f) {
+      await SIGS.ensure(f);
+      if (!SIGS.img(f)) throw new Error('No se encontró la imagen de la firma de ' + f.user + '. Sincroniza la carpeta.');
+      const img = await pdf.embedPng(SIGS.img(f));
+      const sc = Math.min(boxW / img.width, boxH / img.height);
+      page.drawImage(img, { x: mid - img.width * sc / 2, y: boxY, width: img.width * sc, height: img.height * sc });
+    } else center(na ? 'NO REQUIERE V°B°' : 'pendiente', font, 7, mid, boxY + boxH / 2, gray);
+    page.drawLine({ start: { x: cx + 18, y: y0 + 32 }, end: { x: cx + cw - 18, y: y0 + 32 }, thickness: 0.7, color: ink });
+    center(na ? '-' : s.who, bold, 8.5, mid, y0 + 20, ink);
+    if (f) center(fmt(f.fecha), font, 7, mid, y0 + 9, gray);
+  }
+}
+
+async function buildStamped(d) {
+  if (!window.PDFLib) throw new Error('No se pudo cargar la librería PDF (revisa la conexión a internet).');
+  const { PDFDocument } = PDFLib;
+  const o = await getOriginal(d);
+  let pdf;
+  if (o.type === 'pdf') pdf = await PDFDocument.load(o.bytes, { ignoreEncryption: true });
+  else {
+    pdf = await PDFDocument.create();
+    const page = pdf.addPage([595.28, 841.89]);
+    const img = /png/.test(o.mime) ? await pdf.embedPng(o.bytes) : await pdf.embedJpg(o.bytes);
+    const area = { x: 36, y: PDF_SIG.bottom + PDF_SIG.height + 24, w: 523 }; area.h = 841.89 - 36 - area.y;
+    const s = Math.min(area.w / img.width, area.h / img.height);
+    page.drawImage(img, { x: area.x + (area.w - img.width * s) / 2, y: area.y + area.h - img.height * s, width: img.width * s, height: img.height * s });
+  }
+  await drawSigStrip(pdf, d);
+  return pdf.save();
+}
+
+/* ---------- Hoja A4 (vista) ---------- */
+const viewCache = {};
+function simInvoice(d) {
+  const total = Number(d.monto) || 0, neto = Math.round(total / 1.19), iva = total - neto;
+  return `<div class="sim">
+    <div class="sim-top"><div><b style="font-size:13px">${esc(d.proveedor)}</b><br>Giro: Comercialización de insumos<br>Dirección: (simulada)</div>
+      <div class="sim-box">R.U.T.: 76.000.000-0<br>FACTURA ELECTRÓNICA<br>N° ${esc(d.factura)}</div></div>
+    <div>Fecha emisión: ${new Date(d.creado).toLocaleDateString('es-CL')}<br>Referencia: Orden de Compra N° ${esc(d.oc)}</div>
+    <table><thead><tr><th>Descripción</th><th style="text-align:right">Cant.</th><th style="text-align:right">Total</th></tr></thead>
+      <tbody><tr><td>Según Orden de Compra N° ${esc(d.oc)}</td><td style="text-align:right">1</td><td style="text-align:right">${clp(neto)}</td></tr></tbody></table>
+    <table class="tot"><tr><td>Neto</td><td>${clp(neto)}</td></tr><tr><td>IVA 19%</td><td>${clp(iva)}</td></tr><tr><td><b>TOTAL</b></td><td>${clp(total)}</td></tr></table>
+    <div class="sim-note">Vista simulada — no se adjuntó archivo a este documento</div></div>`;
+}
+function a4View(d) {
+  const body = d.archivo ? `<div class="a4-body" data-pdf-for="${esc(d.id)}">Cargando documento…</div>` : `<div class="a4-body">${simInvoice(d)}</div>`;
+  return `<div class="a4">
+    <div class="a4-head">
+      <div><span>N° Comp.</span><b class="mono">${esc(d.id)}</b></div>
+      <div><span>Factura</span><b>${esc(d.factura)}</b></div>
+      <div><span>Proveedor</span><b>${esc(d.proveedor)}</b></div>
+      <div><span>OC</span><b>${esc(d.oc)}</b></div>
+      <div class="stamp"><span>Monto: <b style="color:#1b2430">${clp(d.monto)}</b></span><span>Circuito V°B° · ${ESTADOS[d.estado].label}</span></div>
+    </div>
+    ${body}
+    <div class="sig-zone">${sigSlots(d)}</div>
+  </div>`;
+}
+/* Muestra el PDF con las firmas ya estampadas (generado al vuelo) */
+async function hydrateViewer() {
+  const slot = document.querySelector('[data-pdf-for]'); if (!slot) return;
+  const d = Store.get(slot.dataset.pdfFor); if (!d) return;
+  const key = d.id + '|' + d.historial.length + '|' + (FS.ready() ? 1 : 0);
+  const show = url => { const s = document.querySelector(`[data-pdf-for="${CSS.escape(d.id)}"]`); if (s) s.innerHTML = `<iframe src="${url}#toolbar=1&navpanes=0&view=FitH" title="Documento"></iframe>`; };
+  if (viewCache[d.id] && viewCache[d.id].key === key) return show(viewCache[d.id].url);
+  try {
+    const bytes = await buildStamped(d);
+    const url = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    viewCache[d.id] = { key, url }; show(url);
+  } catch (e) {
+    if (d.archivo.data) { slot.innerHTML = d.archivo.type === 'img' ? `<img src="${d.archivo.data}" alt="Documento">` : `<iframe src="${URL.createObjectURL(await (await fetch(d.archivo.data)).blob())}" title="PDF"></iframe>`; }
+    else slot.innerHTML = `<div style="padding:20px;text-align:center">${icon('alert')}<br>${esc(e.message)}</div>`;
+  }
+}
+
+/* ---------- Modal documento ---------- */
+function openDoc(id) { closeModal('doc'); openModal('doc', docModalHtml(id)); state.docId = id; state.pickG = null; hydrateViewer(); }
+function refreshDocModal() {
+  const el = document.querySelector('.backdrop[data-key="doc"]');
+  if (el && state.docId) { el.innerHTML = docModalHtml(state.docId); hydrateViewer(); }
+}
+function filesCard(d) {
+  if (!d.archivo) return '';
+  const a = d.archivos || {};
+  const keys = sinVB(d) ? ['INICIAL', 'AP', 'FINAL'] : ['INICIAL', 'AP', 'SC', 'GER', 'FINAL'];
+  if (!d.archivo.folder) return `<section class="side-card"><h4>Archivos</h4><p class="small muted" style="margin:0">Documento guardado solo en este navegador. Conecta una carpeta (menú <b>Carpetas</b>) para que cada firma deje su PDF en la carpeta correspondiente.</p></section>`;
+  return `<section class="side-card"><h4>Archivos en carpetas</h4><ul class="checks files">${keys.map(k => {
+    const f = a[k]; return `<li><span class="ck ${f ? 'on' : ''}">${f ? '✓' : '○'}</span><span class="fname" title="${FOLDERS[k]}/${esc(f ? f.name : pdfName(d))}">${FOLDERS[k]}</span>
+      ${f ? `<button class="btn ghost sm" data-act="open-file" data-folder="${k}" data-name="${esc(f.name)}" title="Abrir">${icon('ext')}</button>` : '<span class="when">—</span>'}</li>`;
+  }).join('')}</ul>${FS.ready() ? '' : '<p class="small muted" style="margin:8px 0 0">Reconecta la carpeta para abrir los archivos.</p>'}</section>`;
+}
+function docModalHtml(id) {
+  const d = Store.get(id); if (!d) return '';
+  const g = d.firmas.GER ? d.firmas.GER.user : (d.gerente || 'TG / HL');
+  const ck = (on, label, f, na) => `<li><span class="ck ${on ? 'on' : ''}">${on ? '✓' : '○'}</span><b>${label}</b><span class="when">${f ? fmt(f.fecha) : na ? 'no requiere' : 'pendiente'}</span></li>`;
+  return `<div class="modal modal-xl">
+    <div class="modal-head"><div><div class="eyebrow">Documento</div><h3>Comp. ${esc(d.id)} · Factura ${esc(d.factura)}</h3></div>
+      <div class="acts">${(() => { const q = myQueue(), i = q.findIndex(x => x.id === d.id); return i < 0 ? '' : `<span class="qpos">${q.length === 1 ? 'Último pendiente' : `Quedan ${q.length} pendientes`}</span>${q.length > 1 ? `<button class="btn sm" data-act="skip" data-id="${esc(d.id)}" title="Pasar al siguiente sin firmar">Saltar →</button>` : ''}`; })()}
+        ${badge(d)}
+        <button class="btn ghost" data-act="print" title="Imprimir hoja">${icon('print')}</button>
+        <button class="btn ghost" data-act="download" data-id="${esc(d.id)}" ${d.archivo ? '' : 'disabled'} title="Descargar PDF con firmas">${icon('download')}</button>
+        <button class="btn ghost" data-act="close" data-key="doc" title="Cerrar">${icon('x')}</button></div></div>
+    <div class="doc-grid">
+      <div class="sheet-wrap print-area">${a4View(d)}</div>
+      <aside class="doc-side">
+        ${actionCard(d)}
+        <section class="side-card"><h4>Estado</h4>
+          <dl class="kv"><dt>Estado</dt><dd>${badge(d)}</dd><dt>N° Comp.</dt><dd class="mono">${esc(d.id)}</dd><dt>Proveedor</dt><dd>${esc(d.proveedor)}</dd>${d.libro ? `<dt>RUT</dt><dd>${esc(d.libro.rut)}</dd><dt>Fecha docto</dt><dd>${fdate(d.libro.fDocto)}</dd><dt>Glosa</dt><dd>${esc(d.libro.glosa)}</dd>` : ''}<dt>OC</dt><dd>${esc(d.oc) || '—'}</dd><dt>Monto</dt><dd>${clp(d.monto)}</dd>
+          <dt>Libro</dt><dd>${d.libro ? '<span style="color:var(--ok)">✓ Enlazado</span>' : '<span class="muted">Sin enlace</span>'}</dd>
+          <dt>Archivo</dt><dd>${d.archivo ? esc(d.archivo.name) : '<span class="muted">Vista simulada</span>'}</dd></dl>
+          <div class="loc">${icon('pin')} ${ESTADOS[d.estado].ubic}</div></section>
+        <section class="side-card"><h4>Firmas</h4><ul class="checks">
+          ${ck(!!d.firmas.AP, quien('AP') + ' · Finanzas', d.firmas.AP)}${ck(!!d.firmas.SC, quien('SC') + ' · Subgerencia', d.firmas.SC, sinVB(d))}${ck(!!d.firmas.GER, (USERS[g] ? quien(g) : esc(g)) + ' · Gerencia', d.firmas.GER, sinVB(d))}</ul></section>
+        ${filesCard(d)}
+        <section class="side-card"><h4>Trazabilidad · ID ${esc(d.id)}</h4>${timeline(d)}</section>
+      </aside>
+    </div></div>`;
+}
+function timeline(d) {
+  return `<ul class="timeline">${d.historial.map(h => `<li class="${/APROBADO|FINALIZADO/.test(h.accion) ? 'ok' : h.user === 'SISTEMA' && /guardado|ingresado en/i.test(h.accion) ? 'sys' : ''}"><div class="t-date">${fmt(h.fecha)}</div><div class="t-text">${esc(h.accion)}</div></li>`).join('')}</ul>`;
+}
+function needSigWarning(u) {
+  return Store.firma(u) ? '' : `<div class="banner" style="margin:0 0 10px;padding:10px 12px">${icon('alert')}<div class="grow small"><b>Debes cargar tu firma</b> antes de firmar.</div><button class="btn" data-act="firma-modal">Cargar</button></div>`;
+}
+function needFolderWarning(d) {
+  return d.archivo && d.archivo.folder && !FS.ready() ? `<div class="banner" style="margin:0 0 10px;padding:10px 12px">${icon('folder')}<div class="grow small"><b>Reconecta la carpeta</b> para guardar el PDF firmado.</div><button class="btn" data-act="fs-reconnect">Reconectar</button></div>` : '';
+}
+function actionCard(d) {
+  const u = me(), id = esc(d.id);
+  const dest = k => d.archivo && (d.archivo.folder || FS.ready()) ? ` El PDF firmado se guardará en <b>${k.map(x => FOLDERS[x]).join('</b> y <b>')}</b>.` : '';
+  let body = '';
+  if (u === 'AP' && d.estado === 'NUEVO') {
+    body = `<h4>Paso 1 · ¿Requiere V°B°?</h4><p>Decide si este documento debe circular para firmas.</p>
+      <div class="btn-row"><button class="btn primary lg" data-act="enviar-vb" data-id="${id}">${icon('send')} ENVIAR A V°B°</button>
+      <button class="btn lg" data-act="no-req" data-id="${id}">NO REQUIERE V°B° · solo firma AP</button></div>`;
+  } else if (u === 'AP' && d.estado === 'POR_FIRMAR_AP' && sinVB(d)) {
+    body = `<h4>Firma Finanzas · sin V°B°</h4><p>Se insertará tu firma en <b>FINANZAS</b> y el documento quedará finalizado.${dest(['AP', 'FINAL'])}</p>
+      ${needSigWarning('AP')}${needFolderWarning(d)}<button class="btn success lg" data-act="firmar-ap-final" data-id="${id}">${icon('pen')} FIRMAR Y FINALIZAR</button>`;
+  } else if (u === 'AP' && d.estado === 'POR_FIRMAR_AP') {
+    body = `<h4>Paso 2 · Firma Finanzas</h4><p>Se insertará tu firma en <b>FINANZAS</b> y el documento pasará a SC.${dest(['AP'])}</p>
+      ${needSigWarning('AP')}${needFolderWarning(d)}<button class="btn primary lg" data-act="firmar-ap" data-id="${id}">${icon('pen')} FIRMAR Y ENVIAR A SC</button>`;
+  } else if (u === 'SC' && d.estado === 'PENDIENTE_SC') {
+    body = `<h4>V°B° Subgerencia</h4><p>Revisa el documento. Tu firma se insertará en <b>SUBGERENCIA</b> y volverá a AP.${dest(['SC'])}</p>
+      ${needSigWarning('SC')}${needFolderWarning(d)}<button class="btn success lg" data-act="vb-sc" data-id="${id}">${icon('check')} DAR V°B°</button>`;
+  } else if (u === 'AP' && d.estado === 'DEVUELTO_AP') {
+    body = `<h4>V°B° recibido · Enviar a Gerencia</h4><p>✓ Firma AP &nbsp; ✓ Firma SC. Selecciona el gerente:</p>
+      <div class="ger-pick">${['TG', 'HL'].map(g => `<button class="ger-opt ${state.pickG === g ? 'sel' : ''}" data-act="pick-g" data-g="${g}"><span class="avatar av-${g}">${g}</span>${USERS[g].nombre}</button>`).join('')}</div>
+      <button class="btn primary lg" data-act="enviar-ger" data-id="${id}" ${state.pickG ? '' : 'disabled'}>${icon('send')} ENVIAR A GERENCIA${state.pickG ? ' (' + state.pickG + ')' : ''}</button>`;
+  } else if ((u === 'TG' || u === 'HL') && d.estado === 'PENDIENTE_' + u) {
+    body = `<h4>Firma Gerencia</h4><p>✓ AP &nbsp; ✓ SC. Tu firma se insertará en <b>GERENCIA</b> y el documento quedará <b>APROBADO</b>.${dest(['GER', 'FINAL'])}</p>
+      ${needSigWarning(u)}${needFolderWarning(d)}<button class="btn success lg" data-act="firmar-ger" data-id="${id}">${icon('pen')} FIRMAR / APROBAR</button>`;
+  } else if (d.estado === 'APROBADO') {
+    body = sinVB(d) ? `<h4>Documento finalizado</h4><p style="margin:0">✓ AP — no requería V°B°. Archivado en ${FOLDERS.FINAL}.</p>`
+      : `<h4>Documento aprobado</h4><p style="margin:0">✓ AP &nbsp; ✓ SC &nbsp; ✓ ${esc(d.firmas.GER.user)} — archivado en ${FOLDERS.FINAL}.</p>`;
+  } else if (d.estado === 'NO_REQUIERE') {
+    body = `<h4>Sin V°B°</h4><p style="margin:0">AP indicó que este documento no requiere V°B°.</p>`;
+  } else {
+    body = `<h4>Sin acciones para ti</h4><p style="margin:0">El documento está en: <b>${ESTADOS[d.estado].ubic}</b>.</p>`;
+  }
+  return `<section class="side-card action-card">${body}</section>`;
+}
+
+/* ================================================================
+   COLA DE TRABAJO: siguiente documento automático + llegadas
+   ================================================================ */
+function myQueue() {
+  if (!me()) return [];
+  const bands = bandejasDe(me()).filter(b => b.accion);
+  return Store.docs().filter(d => bands.some(b => b.f(d)))
+    .sort((a, b) => (state.skipped.has(a.id) - state.skipped.has(b.id)) || (a.actualizado || '').localeCompare(b.actualizado || ''));
+}
+const inboxFor = () => me() === 'AP' ? FS.inbox : [];
+function updateTitle() {
+  const n = myQueue().length + inboxFor().length;
+  document.title = (n ? `(${n}) ` : '') + 'Circuito V°B° · MONFRUT';
+}
+function beep() {
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(), o = c.createOscillator(), g = c.createGain();
+    o.frequency.value = 880; g.gain.setValueAtTime(0.08, c.currentTime); g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.35);
+    o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + 0.35); } catch (e) { }
+}
+const modalBusy = () => [...document.querySelectorAll('.backdrop')].some(b => b.dataset.key !== 'done');
+
+/* Al iniciar sesión: abre de inmediato lo pendiente */
+function startQueue() {
+  if (!me()) return;
+  state.started = true; state.known = new Set(); state.knownFiles = new Set(inboxFor()); state.skipped = new Set();
+  const q = myQueue(); q.forEach(d => state.known.add(d.id)); updateTitle();
+  if (q.length) { openDoc(q[0].id); toast(`Tienes ${q.length} documento${q.length > 1 ? 's' : ''} pendiente${q.length > 1 ? 's' : ''}.`); }
+  else if (inboxFor().length) { openNewDocModal(inboxFor()[0]); toast(`${inboxFor().length} archivo(s) en ${FOLDERS.INICIAL} por registrar.`); }
+  else toast('No tienes documentos pendientes. Te avisaré cuando llegue uno.');
+}
+/* Después de firmar: sigue con el mismo documento si aún requiere acción; si no, abre el siguiente */
+function afterAction(id, msg) {
+  if (myQueue().some(x => x.id === id)) { refreshDocModal(); if (msg) toast(msg, 'ok'); updateTitle(); return; }
+  goNext(msg, id);
+}
+function goNext(msg, exceptId) {
+  const q = myQueue().filter(x => x.id !== exceptId); q.forEach(d => state.known.add(d.id)); updateTitle();
+  if (q.length) {
+    openDoc(q[0].id);
+    toast(`${msg ? msg + ' ' : ''}Siguiente: Comp. ${q[0].id} · quedan ${q.length}.`, 'ok'); return;
+  }
+  closeModal('doc');
+  if (inboxFor().length) { if (msg) toast(msg, 'ok'); openNewDocModal(inboxFor()[0]); toast(`Siguiente: registrar ${inboxFor()[0]} (${inboxFor().length} en ${FOLDERS.INICIAL}).`); return; }
+  showAllDone(msg);
+}
+function showAllDone(msg) {
+  closeModal('doc');
+  openModal('done', `<div class="modal modal-sm"><div class="done">
+    <div class="done-ic">${icon('check')}</div>
+    <h2>¡Todo firmado por el momento!</h2>
+    <p>${msg ? esc(msg) + '<br>' : ''}No tienes documentos pendientes. Cuando llegue uno nuevo se abrirá automáticamente.</p>
+    <button class="btn primary lg block" data-act="close" data-key="done">Entendido</button></div></div>`);
+}
+/* Llegadas: documentos que entran a mi bandeja (sincronización de carpeta u otra pestaña) */
+function checkArrivals() {
+  if (!me() || !state.started) return;
+  const q = myQueue(), nuevos = q.filter(d => !state.known.has(d.id));
+  q.forEach(d => state.known.add(d.id));
+  const files = inboxFor().filter(n => !state.knownFiles.has(n)); inboxFor().forEach(n => state.knownFiles.add(n));
+  updateTitle();
+  if (!nuevos.length && !files.length) return;
+  beep();
+  if (nuevos.length) {
+    const txt = nuevos.length === 1 ? `Llegó un documento: Comp. ${nuevos[0].id} (${nuevos[0].proveedor})` : `Llegaron ${nuevos.length} documentos nuevos`;
+    if (!modalBusy()) { closeModal('done'); openDoc(nuevos[0].id); toast(txt, 'ok'); }
+    else toast(txt + ' · se abrirá al terminar el actual.', 'ok');
+  } else if (files.length) {
+    const txt = `Nuevo archivo en ${FOLDERS.INICIAL}: ${files[0]}`;
+    if (!modalBusy()) { closeModal('done'); openNewDocModal(files[0]); toast(txt, 'ok'); }
+    else toast(txt, 'ok');
+  }
+}
+
+/* ================================================================
+   FLUJO (máquina de estados). Si hay archivo + carpeta, primero se
+   genera y guarda el PDF firmado; si falla, el estado NO cambia.
+   ================================================================ */
+function requireFirma(u) {
+  if (Store.firma(u)) return true;
+  toast('Primero debes cargar tu firma.', 'warn'); openFirmaModal(); return false;
+}
+async function transition(id, fn, outFolders, okMsg) {
+  const d = Store.get(id); if (!d) return;
+  if (fn(d) === false) { toast('Acción no permitida en el estado actual.', 'error'); return; }
+  const useFolder = outFolders && outFolders.length && d.archivo && (d.archivo.folder || FS.ready());
+  if (useFolder) {
+    if (!FS.ready()) { toast('Reconecta la carpeta para guardar el PDF firmado.', 'warn'); return; }
+    busy('Generando PDF firmado y guardando en carpeta…');
+    try {
+      const bytes = await buildStamped(d), name = pdfName(d), t = nowIso();
+      d.archivos = d.archivos || {};
+      for (const k of outFolders) {
+        await FS.writeFile(FOLDERS[k], name, new Blob([bytes], { type: 'application/pdf' }));
+        d.archivos[k] = { name, fecha: t };
+        hist(d, 'SISTEMA', `PDF guardado en ${FOLDERS[k]}/${name}`, t);
+      }
+    } catch (e) { busy(); toast('No se pudo generar o guardar el PDF firmado: ' + e.message, 'error'); return; }
+    busy();
+  }
+  if (Store.upsert(d)) { render(); afterAction(d.id, okMsg); if (FS.ready()) FS.sync(true); }
+}
+function sign(d, u, slot) {
+  const t = nowIso(), img = Store.firma(u).img, id = SIGS.id(u, img);
+  SIGS.put(id, img); if (FS.ready()) fetch(img).then(r => r.blob()).then(b => FS.writeFile(SYS_DIR + '/_firmas', id + '.png', b)).catch(() => { });
+  d.firmas[slot] = { user: u, sig: id, fecha: t }; return t;
+}
+
+const Flow = {
+  'enviar-vb': id => transition(id, d => {
+    if (me() !== 'AP' || d.estado !== 'NUEVO') return false;
+    d.requiereVB = true; d.estado = 'POR_FIRMAR_AP'; hist(d, 'AP', 'AP seleccionó documento para V°B°');
+  }),
+  'no-req': id => confirmBox('Este documento NO requiere V°B°: solo llevará la firma de AP y quedará en FACTURAS FIRMADAS.', () => transition(id, d => {
+    if (me() !== 'AP' || d.estado !== 'NUEVO') return false;
+    d.requiereVB = false; d.estado = 'POR_FIRMAR_AP'; hist(d, 'AP', 'AP indicó que NO REQUIERE V°B° (solo firma AP)');
+  }), 'Continuar'),
+  'firmar-ap': id => { if (!requireFirma('AP')) return; transition(id, d => {
+    if (me() !== 'AP' || d.estado !== 'POR_FIRMAR_AP' || sinVB(d)) return false;
+    const t = sign(d, 'AP', 'AP'); hist(d, 'AP', 'AP firmó documento', t); hist(d, 'AP', 'AP envió a SC', t);
+    d.estado = 'PENDIENTE_SC';
+  }, ['AP'], 'Firmado y enviado a SC.'); },
+  'firmar-ap-final': id => { if (!requireFirma('AP')) return; transition(id, d => {
+    if (me() !== 'AP' || d.estado !== 'POR_FIRMAR_AP' || !sinVB(d)) return false;
+    const t = sign(d, 'AP', 'AP'); hist(d, 'AP', 'AP firmó documento', t); hist(d, 'SISTEMA', 'DOCUMENTO FINALIZADO (sin V°B°)', t);
+    d.estado = 'APROBADO';
+  }, ['AP', 'FINAL'], 'Firmado y archivado en FACTURAS FIRMADAS.'); },
+  'vb-sc': id => { if (!requireFirma('SC')) return; transition(id, d => {
+    if (me() !== 'SC' || d.estado !== 'PENDIENTE_SC') return false;
+    const t = sign(d, 'SC', 'SC'); hist(d, 'SC', 'SC dio V°B°', t); hist(d, 'SISTEMA', 'Documento devuelto a AP', t);
+    d.estado = 'DEVUELTO_AP';
+  }, ['SC'], 'V°B° registrado. Documento devuelto a AP.'); },
+  'enviar-ger': id => { const g = state.pickG; if (!g) return; transition(id, d => {
+    if (me() !== 'AP' || d.estado !== 'DEVUELTO_AP') return false;
+    d.gerente = g; d.estado = 'PENDIENTE_' + g; hist(d, 'AP', `AP envió documento a ${quien(g)}`);
+  }, null, `Documento enviado a ${quien(g)} · Gerencia.`); },
+  'firmar-ger': id => { const u = me(); if (!requireFirma(u)) return; transition(id, d => {
+    if (d.estado !== 'PENDIENTE_' + u) return false;
+    const t = sign(d, u, 'GER'); hist(d, u, `${u} firmó documento`, t); hist(d, 'SISTEMA', 'DOCUMENTO APROBADO', t);
+    d.estado = 'APROBADO';
+  }, ['GER', 'FINAL'], 'Documento APROBADO.'); }
+};
+
+/* ================================================================
+   NUEVO DOCUMENTO (AP) — subir archivo o registrar uno de la carpeta
+   ================================================================ */
+/* Lee el texto del PDF (pdf.js) y busca el N° de Orden de Compra */
+async function pdfText(file) {
+  if (!window.pdfjsLib) {
+    const base = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+    await loadScript(base + 'pdf.min.js');
+    try { const w = await (await fetch(base + 'pdf.worker.min.js')).blob(); pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(w); }
+    catch (e) { pdfjsLib.GlobalWorkerOptions.workerSrc = base + 'pdf.worker.min.js'; }
+  }
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  let txt = '';
+  for (let i = 1; i <= Math.min(pdf.numPages, 4); i++) txt += ' ' + (await (await pdf.getPage(i)).getTextContent()).items.map(t => t.str).join(' ');
+  return txt.replace(/\s+/g, ' ');
+}
+async function detectOC(file) {
+  try {
+    const t = await pdfText(file), found = [];
+    if (t.replace(/\s/g, '').length < 20) return { scanned: true, ocs: [] };
+    const rx = [/ORDEN\s*(?:DE\s*)?COMPRA\s*(?:N\s*[°º.o]?|NRO\.?|NUM\.?|#)?\s*:?\s*(\d{2,})/gi, /\bO\.?\s?C\.?\s*(?:N\s*[°º.o]?|NRO\.?|#)\s*:?\s*(\d{2,})/gi, /\bOC\s*:?\s*(\d{3,})/g];
+    for (const r of rx) for (const m of t.matchAll(r)) if (!found.includes(m[1])) found.push(m[1]);
+    return { ocs: found.slice(0, 3) };
+  } catch (e) { return { ocs: [] }; }
+}
+function openNewDocModal(fromFolder) {
+  const sugId = fromFolder ? fromFolder.replace(/\.[^.]+$/, '') : '';
+  const fileBox = fromFolder
+    ? `<div class="drop locked" style="padding:14px">${icon('folder')}<b>${FOLDERS.INICIAL}/${esc(fromFolder)}</b><small class="muted">Archivo tomado desde la carpeta</small></div>`
+    : `<label class="drop" style="padding:16px">${icon('upload')}<span id="fileLbl">Seleccionar PDF / JPG / PNG</span><small class="muted">${FS.ready() ? `Se guardará en ${FOLDERS.INICIAL} con el nombre del ID` : 'PDF hasta 15 MB · si no adjuntas, se muestra una factura simulada'}</small>
+        <input type="file" name="file" accept="application/pdf,image/png,image/jpeg" hidden></label>`;
+  openModal('new', `<form class="modal modal-xl" id="newForm" novalidate>
+    <div class="modal-head"><div><div class="eyebrow">Paso 1 · Finanzas</div><h3>${fromFolder ? 'Registrar documento de la carpeta' : 'Ingresar documento'}</h3></div>
+      <div class="acts">${fromFolder ? '' : '<button type="button" class="link small" data-act="fill-demo">Rellenar ejemplo</button>'}
+      <button type="button" class="btn ghost" data-act="close" data-key="new">${icon('x')}</button></div></div>
+    <div class="reg-body"><div><div class="form-grid">
+      <label class="field"><span>N° Comprobante (ID único) *</span><input class="input mono" name="docid" placeholder="24350" value="${esc(sugId)}"></label>
+      <label class="field"><span>N° Factura *</span><input class="input" name="factura" placeholder="1065"></label>
+      <label class="field full"><span>Proveedor *</span><input class="input" name="proveedor" placeholder="DAMGE SPA"></label>
+      <label class="field"><span>N° OC</span><input class="input" name="oc" placeholder="Ver documento →"><span class="oc-hint muted" id="ocHint"></span></label>
+      <label class="field"><span>Monto total (CLP) *</span><input class="input" name="monto" type="number" min="0" step="1" placeholder="712132"></label>
+      <div class="full" id="libroMatch"></div>
+      <div class="field full"><span>Documento (PDF o imagen)${fromFolder ? '' : ' · opcional'}</span>${fileBox}</div>
+    </div><div class="err" id="nerr"></div></div>
+    <div class="reg-prev" id="regPrev">${fromFolder ? 'Cargando documento…' : `${icon('file')}<br>Selecciona un archivo para ver la vista previa`}</div></div>
+    <div class="modal-foot"><button type="button" class="btn" data-act="close" data-key="new">Cancelar</button>
+      <button type="submit" class="btn primary" id="nsave">Guardar e ingresar</button></div></form>`);
+  const form = $('#newForm'), fileIn = form.elements.file;
+  /* Vista previa del documento + detección automática de OC */
+  let prevUrl = null;
+  const showPreview = async file => {
+    const box = $('#regPrev'); if (!box) return;
+    if (prevUrl) URL.revokeObjectURL(prevUrl);
+    prevUrl = URL.createObjectURL(file);
+    box.innerHTML = /pdf/.test(file.type) || /\.pdf$/i.test(file.name) ? `<iframe src="${prevUrl}#toolbar=1&navpanes=0&view=FitH" title="Vista previa"></iframe>` : `<img src="${prevUrl}" alt="Vista previa">`;
+    const hint = $('#ocHint');
+    if (!/pdf/.test(file.type) && !/\.pdf$/i.test(file.name)) { hint.textContent = ''; return; }
+    hint.className = 'oc-hint muted'; hint.textContent = 'Buscando OC en el documento…';
+    const { ocs, scanned } = await detectOC(file);
+    if (!$('#ocHint')) return;
+    const oc = form.elements.oc;
+    if (!ocs.length) { hint.className = 'oc-hint muted'; hint.textContent = scanned ? 'PDF escaneado: lee la OC en la vista previa →' : 'No se detectó OC: revísala en la vista previa →'; return; }
+    if (!oc.value) oc.value = ocs[0];
+    hint.className = 'oc-hint';
+    hint.innerHTML = `✓ OC detectada en el PDF: ${ocs.map(esc).join(', ')}${ocs.length > 1 ? ' — revisa cuál corresponde' : ''}`;
+  };
+  if (fileIn) fileIn.addEventListener('change', () => { $('#fileLbl').textContent = fileIn.files[0] ? fileIn.files[0].name : 'Seleccionar PDF / JPG / PNG'; if (fileIn.files[0]) showPreview(fileIn.files[0]); });
+  if (fromFolder) FS.readFile(FOLDERS.INICIAL, fromFolder).then(showPreview).catch(e => { const b = $('#regPrev'); if (b) b.textContent = 'No se pudo abrir el archivo: ' + e.message; });
+  form.elements[fromFolder ? 'factura' : 'docid'].focus();
+  const auto = {};
+  const showMatch = () => {
+    const id = form.elements.docid.value.trim(), l = LIBRO.get(id), box = $('#libroMatch');
+    if (!id) { box.innerHTML = ''; return; }
+    if (l) {
+      for (const [k, v] of [['factura', l.docto], ['proveedor', l.nombre], ['monto', l.monto]]) {
+        const el = form.elements[k]; if (!el.value || el.value === auto[k]) { el.value = v; auto[k] = String(v); }
+      }
+      box.innerHTML = `<div class="banner info" style="margin:0 0 14px;padding:10px 12px;font-size:12.5px">${icon('book')}<div class="grow">✓ Encontrado en Libro de Compras · Comp. <b>${esc(id)}</b><br>${libroResumen(l)}</div></div>`;
+    } else box.innerHTML = LIBRO.loaded()
+      ? `<div class="banner" style="margin:0 0 14px;padding:10px 12px;font-size:12.5px">${icon('alert')}<div class="grow">El comprobante <b>${esc(id)}</b> no está en el libro de compras (cargado hasta N° ${LIBRO.meta.maxCompte}, ${fdate(LIBRO.meta.maxFecha)}). Completa los datos a mano.</div></div>`
+      : `<div class="banner" style="margin:0 0 14px;padding:10px 12px;font-size:12.5px">${icon('book')}<div class="grow">Carga el libro de compras para completar los datos automáticamente.</div></div>`;
+  };
+  form.elements.docid.addEventListener('input', showMatch); showMatch();
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const v = k => form.elements[k].value.trim();
+    const data = { id: v('docid'), factura: v('factura'), proveedor: v('proveedor').toUpperCase(), oc: v('oc'), monto: v('monto') };
+    const fail = m => { $('#nerr').textContent = m; $('#nsave').disabled = false; $('#nsave').textContent = 'Guardar e ingresar'; };
+    if (['id', 'factura', 'proveedor', 'monto'].some(k => !data[k])) return fail('Completa todos los campos obligatorios.');
+    if (Store.get(data.id)) return fail(`Ya existe un documento con ID ${data.id}. El ID debe ser único.`);
+    $('#nsave').disabled = true; $('#nsave').textContent = 'Procesando…';
+    const t = nowIso();
+    let archivo = null, archivos = {};
+    try {
+      if (fromFolder) {
+        if (!FS.ready()) return fail('Reconecta la carpeta primero.');
+        archivo = { name: fromFolder, type: /\.pdf$/i.test(fromFolder) ? 'pdf' : 'img', folder: 'INICIAL' };
+        archivos.INICIAL = { name: fromFolder, fecha: t };
+      } else if (fileIn && fileIn.files[0]) {
+        const f = fileIn.files[0];
+        if (!/^(application\/pdf|image\/(png|jpeg))$/.test(f.type)) return fail('Formato no soportado. Usa PDF, JPG o PNG.');
+        if (FS.ready()) {
+          const ext = f.type === 'application/pdf' ? 'pdf' : f.type === 'image/png' ? 'png' : 'jpg';
+          const name = `${safeName(data.id)}.${ext}`;
+          await FS.writeFile(FOLDERS.INICIAL, name, f);
+          archivo = { name, type: ext === 'pdf' ? 'pdf' : 'img', folder: 'INICIAL' };
+          archivos.INICIAL = { name, fecha: t };
+        } else archivo = await processDocFile(f);
+      }
+    } catch (err) { return fail(err.message); }
+    const lib = LIBRO.get(data.id);
+    const doc = { ...data, monto: Number(data.monto), libro: lib || null, archivo, archivos, requiereVB: null, estado: 'NUEVO', gerente: null, firmas: {}, historial: [], creado: t, actualizado: t };
+    hist(doc, 'AP', 'AP ingresó documento', t);
+    if (lib) hist(doc, 'SISTEMA', `Enlazado con Libro de Compras · Comp. ${data.id} (${lib.nombre}, docto ${lib.docto})`, t);
+    if (archivos.INICIAL) hist(doc, 'SISTEMA', `Archivo ingresado en ${FOLDERS.INICIAL}/${archivos.INICIAL.name}`, t);
+    if (!Store.upsert(doc)) {
+      if (!archivo || archivo.folder) return fail('No se pudo guardar.');
+      doc.archivo = null; if (!Store.upsert(doc)) return fail('No se pudo guardar.');
+      toast('Archivo demasiado grande para el navegador: se guardó sin adjunto.', 'warn');
+    }
+    state.known.add(doc.id);
+    if (fromFolder) FS.inbox = FS.inbox.filter(n => n !== fromFolder);
+    closeModal('new'); state.view = 'b:nuevos'; render(); openDoc(doc.id);
+    toast(`Documento ID ${doc.id} ingresado.`, 'ok');
+  });
+}
+
+/* ---------------- Procesamiento de archivos (modo local) ---------------- */
+const readFile = f => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(f); });
+const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('No se pudo leer la imagen.')); i.src = src; });
+
+async function processDocFile(file) {
+  if (file.type === 'application/pdf') {
+    if (file.size > 15 * 1024 * 1024) throw new Error('El PDF supera 15 MB (límite sin carpeta). Conecta una carpeta para archivos grandes.');
+    return { name: file.name, type: 'pdf', data: await readFile(file) };
+  }
+  const img = await loadImg(await readFile(file));
+  const s = Math.min(1, 1400 / img.width);
+  const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+  return { name: file.name, type: 'img', data: c.toDataURL('image/jpeg', 0.82) };
+}
+
+function trimCanvas(c) {
+  const x = c.getContext('2d'), { width: w, height: h } = c, d = x.getImageData(0, 0, w, h).data;
+  let t = h, l = w, r = -1, b = -1;
+  for (let y = 0; y < h; y++) for (let i = 0; i < w; i++) if (d[(y * w + i) * 4 + 3] > 10) { if (y < t) t = y; if (y > b) b = y; if (i < l) l = i; if (i > r) r = i; }
+  if (r < 0) return null;
+  const p = 6, o = document.createElement('canvas');
+  o.width = r - l + 1 + p * 2; o.height = b - t + 1 + p * 2;
+  o.getContext('2d').drawImage(c, l, t, r - l + 1, b - t + 1, p, p, r - l + 1, b - t + 1);
+  return o;
+}
+async function processSignature(file, removeWhite) {
+  if (!/^image\/(png|jpeg)$/.test(file.type)) throw new Error('La firma debe ser PNG o JPG.');
+  const img = await loadImg(await readFile(file));
+  const s = Math.min(1, 700 / img.width, 300 / img.height);
+  const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, c.width, c.height);
+  if (removeWhite) {
+    const id = x.getImageData(0, 0, c.width, c.height), p = id.data;
+    for (let i = 0; i < p.length; i += 4) {
+      const m = Math.min(p[i], p[i + 1], p[i + 2]);
+      if (m > 225) p[i + 3] = 0; else if (m > 175) p[i + 3] = Math.round(p[i + 3] * (225 - m) / 50);
+    }
+    x.putImageData(id, 0, 0);
+  }
+  const t = trimCanvas(c); if (!t) throw new Error('La imagen parece estar vacía.');
+  return t.toDataURL('image/png');
+}
+
+/* ================================================================
+   MODAL FIRMA (subir o dibujar)
+   ================================================================ */
+function openFirmaModal() {
+  const u = me(), cur = Store.firma(u);
+  let pending = null, lastFile = null, drawn = false;
+  openModal('firma', `<div class="modal modal-md">
+    <div class="modal-head"><div><div class="eyebrow">${quien(u)} · ${USERS[u].rol}</div><h3>Cargar / Cambiar firma</h3></div>
+      <div class="acts"><button class="btn ghost" data-act="close" data-key="firma">${icon('x')}</button></div></div>
+    <div class="modal-body">
+      <div class="tabs"><button class="tab active" data-tab="up">Subir imagen</button><button class="tab" data-tab="draw">Dibujar firma</button></div>
+      <div id="pane-up">
+        <label class="drop" id="drop">${icon('upload')}<b>Arrastra tu firma aquí o haz clic</b><small class="muted">PNG con fondo transparente (ideal) o JPG</small>
+          <input type="file" id="sigFile" accept="image/png,image/jpeg" hidden></label>
+        <label class="check"><input type="checkbox" id="rmWhite"> Eliminar fondo blanco automáticamente (útil para JPG o fotos escaneadas)</label>
+        <div class="sig-preview checker" id="sigPrev">${cur ? `<img src="${cur.img}" alt="Firma actual">` : 'Vista previa'}</div>
+      </div>
+      <div id="pane-draw" class="hidden">
+        <canvas id="pad" width="1000" height="340"></canvas>
+        <div style="display:flex;justify-content:space-between;margin-top:8px"><span class="muted small">Firma con mouse, lápiz o dedo.</span><button class="link small" id="padClear">Limpiar</button></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn" data-act="close" data-key="firma">Cancelar</button>
+      <button class="btn primary" id="saveSig" disabled>Guardar firma</button></div></div>`);
+
+  const saveBtn = $('#saveSig'), prev = $('#sigPrev'), fileIn = $('#sigFile'), rm = $('#rmWhite'), drop = $('#drop');
+  let mode = 'up';
+  const handleFile = async f => {
+    lastFile = f; rm.checked = rm.checked || f.type === 'image/jpeg';
+    try { pending = await processSignature(f, rm.checked); prev.innerHTML = `<img src="${pending}" alt="Vista previa">`; saveBtn.disabled = false; }
+    catch (e) { toast(e.message, 'error'); }
+  };
+  fileIn.addEventListener('change', () => fileIn.files[0] && handleFile(fileIn.files[0]));
+  rm.addEventListener('change', () => lastFile && handleFile(lastFile));
+  ['dragover', 'dragenter'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => e.dataTransfer.files[0] && handleFile(e.dataTransfer.files[0]));
+
+  const pad = $('#pad'), ctx = pad.getContext('2d'); let down = false;
+  ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#0b2a5b';
+  const pos = e => { const r = pad.getBoundingClientRect(); return [(e.clientX - r.left) * pad.width / r.width, (e.clientY - r.top) * pad.height / r.height]; };
+  pad.addEventListener('pointerdown', e => { down = true; pad.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pos(e)); });
+  pad.addEventListener('pointermove', e => { if (!down) return; ctx.lineTo(...pos(e)); ctx.stroke(); drawn = true; saveBtn.disabled = false; });
+  pad.addEventListener('pointerup', () => { down = false; });
+  $('#padClear').addEventListener('click', () => { ctx.clearRect(0, 0, pad.width, pad.height); drawn = false; saveBtn.disabled = true; });
+
+  document.querySelectorAll('.tab[data-tab]').forEach(t => t.addEventListener('click', () => {
+    mode = t.dataset.tab;
+    document.querySelectorAll('.tab[data-tab]').forEach(x => x.classList.toggle('active', x === t));
+    $('#pane-up').classList.toggle('hidden', mode !== 'up'); $('#pane-draw').classList.toggle('hidden', mode !== 'draw');
+    saveBtn.disabled = mode === 'up' ? !pending : !drawn;
+  }));
+
+  saveBtn.addEventListener('click', () => {
+    let img = pending;
+    if (mode === 'draw') { const t = trimCanvas(pad); if (!t) return; img = t.toDataURL('image/png'); }
+    if (!img) return;
+    if (Store.setFirma(u, img)) { closeModal('firma'); toast('Firma guardada. Se usará automáticamente.', 'ok'); render(); refreshDocModal(); }
+  });
+}
+
+/* ================================================================
+   BUSCADOR
+   ================================================================ */
+function searchView() {
+  return `<div class="page-head"><div><h1>Buscar documento</h1><p>Trazabilidad completa por ID único.</p></div></div>
+    <div class="search-hero">${icon('search')}<input id="q" class="search-big" placeholder="Buscar por N° comprobante, factura, OC o proveedor" value="${esc(state.q)}" autocomplete="off"></div>
+    <div id="sres">${searchResults()}</div>`;
+}
+function wireLibro() {
+  const f = $('#libroFile');
+  if (f) f.addEventListener('change', async () => {
+    if (!f.files[0]) return; busy('Leyendo libro de compras…');
+    try { const m = await LIBRO.fromFile(f.files[0], 'manual'); toast(`Libro cargado: ${m.rows} comprobantes.`, 'ok'); render(); }
+    catch (e) { toast(e.message, 'error'); } busy();
+  });
+  const q = $('#lq'); if (q) { q.focus(); q.addEventListener('input', () => { $('#lres').innerHTML = libroLookup(q.value); }); }
+}
+function wireSearch() {
+  const q = $('#q'); q.focus(); q.setSelectionRange(q.value.length, q.value.length);
+  q.addEventListener('input', () => { state.q = q.value; state.selId = null; $('#sres').innerHTML = searchResults(); });
+}
+function searchResults() {
+  const q = state.q.trim().toLowerCase(), docs = Store.docs();
+  const list = q ? docs.filter(d => [d.id, d.factura, d.oc, d.proveedor].some(x => String(x).toLowerCase().includes(q))) : docs;
+  const exact = q && docs.find(d => d.id.toLowerCase() === q);
+  const sel = (state.selId && Store.get(state.selId)) || exact || (q && list.length === 1 ? list[0] : null);
+  return `${sel ? detailCard(sel) : ''}
+    <div class="section-title"><h2>${q ? 'Resultados' : 'Todos los documentos'}</h2><span class="muted small">${list.length} documento(s)</span></div>
+    ${docTable(list, q ? 'Sin coincidencias.' : 'Aún no hay documentos ingresados.').replace(/data-act="open"/g, 'data-act="sel"')}`;
+}
+function detailCard(d) {
+  const g = d.firmas.GER ? d.firmas.GER.user : (d.gerente || 'TG/HL');
+  const ck = (on, l, na) => `<li><span class="ck ${on ? 'on' : ''}">${on ? '✓' : '○'}</span><b>${l}</b>${na && !on ? '<span class="when">no requiere</span>' : ''}</li>`;
+  return `<div class="detail">
+    <div class="card"><div class="muted small">ID</div><div class="big-id mono">${esc(d.id)}</div>
+      <dl class="kv" style="margin-top:10px"><dt>Factura</dt><dd>${esc(d.factura)}</dd><dt>Proveedor</dt><dd>${esc(d.proveedor)}</dd><dt>OC</dt><dd>${esc(d.oc)}</dd><dt>Monto</dt><dd>${clp(d.monto)}</dd></dl>
+      <button class="btn primary" style="margin-top:14px" data-act="open" data-id="${esc(d.id)}">${icon('file')} Ver documento</button></div>
+    <div class="card"><h3>Estado</h3>${badge(d)}
+      <div class="loc">${icon('pin')} ${ESTADOS[d.estado].ubic}</div>
+      <h3 style="margin-top:16px">Firmas</h3><ul class="checks">${ck(!!d.firmas.AP, 'AP')}${ck(!!d.firmas.SC, 'SC', sinVB(d))}${ck(!!d.firmas.GER, esc(g), sinVB(d))}</ul></div>
+    <div class="card"><h3>Historial</h3>${timeline(d)}</div></div>`;
+}
+
+/* ================================================================
+   EVENTOS GLOBALES
+   ================================================================ */
+async function openFolderFile(folderKey, name) {
+  const w = window.open('', '_blank');
+  try {
+    const f = await FS.readFile(FOLDERS[folderKey], name);
+    const url = URL.createObjectURL(f);
+    if (w) w.location.href = url; else { const a = document.createElement('a'); a.href = url; a.download = name; a.click(); }
+  } catch (e) { if (w) w.close(); toast('No se pudo abrir el archivo: ' + e.message, 'error'); }
+}
+async function downloadStamped(id) {
+  const d = Store.get(id); if (!d) return;
+  busy('Generando PDF…');
+  try {
+    const bytes = await buildStamped(d);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([bytes], { type: 'application/pdf' }));
+    a.download = `${safeName(d.id)}_firmado.pdf`; a.click();
+  } catch (e) { toast(e.message, 'error'); }
+  busy();
+}
+
+document.addEventListener('click', async e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, id = el.dataset.id;
+  if (Flow[a]) { Flow[a](id); return; }
+  switch (a) {
+    case 'nav': state.view = el.dataset.view; render(); window.scrollTo(0, 0); break;
+    case 'menu': $('#sidebar').classList.toggle('open'); $('#overlay').classList.toggle('show'); break;
+    case 'logout': localStorage.removeItem(LS.session); state.user = null; state.q = ''; state.started = false; document.title = 'Circuito V°B° · MONFRUT'; document.querySelectorAll('.backdrop').forEach(b => b.remove()); render(); break;
+    case 'open': openDoc(id); break;
+    case 'skip': { state.skipped.add(id); const q = myQueue().filter(x => x.id !== id); if (q.length) { openDoc(q[0].id); toast(`Comp. ${id} queda para después.`); } } break;
+    case 'sel': state.selId = id; $('#sres').innerHTML = searchResults(); window.scrollTo({ top: 0, behavior: 'smooth' }); break;
+    case 'close': closeModal(el.dataset.key); break;
+    case 'confirm-ok': closeModal('confirm'); if (confirmCb) confirmCb(); confirmCb = null; break;
+    case 'new-doc': openNewDocModal(); break;
+    case 'start-next': goNext(); break;
+    case 'new-doc-id': openNewDocModal(); { const E = $('#newForm').elements; E.docid.value = id; E.docid.dispatchEvent(new Event('input')); E.oc.focus(); } break;
+    case 'import': openNewDocModal(el.dataset.name); break;
+    case 'firma-modal': openFirmaModal(); break;
+    case 'pick-g': state.pickG = el.dataset.g; refreshDocModal(); break;
+    case 'print': window.print(); break;
+    case 'download': downloadStamped(id); break;
+    case 'open-file': openFolderFile(el.dataset.folder, el.dataset.name); break;
+    case 'fs-connect': try { await FS.connect(); render(); } catch (err) { if (err.name !== 'AbortError') toast('No se pudo conectar la carpeta: ' + err.message, 'error'); } break;
+    case 'fs-reconnect': try { await FS.reconnect(); render(); refreshDocModal(); } catch (err) { toast('No se pudo reconectar: ' + err.message, 'error'); } break;
+    case 'fs-sync': await FS.sync(); render(); toast('Carpeta sincronizada.', 'ok'); break;
+    case 'fs-disconnect': confirmBox('Se dejará de usar la carpeta en este navegador. Los archivos de la carpeta no se borran.', () => FS.disconnect(), 'Desconectar'); break;
+    case 'fill-demo': {
+      const E = $('#newForm').elements; const n = String(458721 + Store.docs().length);
+      E.docid.value = Store.get('458721') ? n : '458721'; E.factura.value = '4589'; E.proveedor.value = 'PROVEEDOR EJEMPLO SPA'; E.oc.value = '78451'; E.monto.value = '1250000'; break;
+    }
+    case 'quick-user': $('#lu').value = USERS[el.dataset.u].login; $('#lp').value = '1234'; $('#lerr').textContent = ''; break;
+    case 'reset-demo': confirmBox('Se eliminarán los documentos y firmas guardados en este navegador. Los archivos y el registro de la carpeta conectada NO se borran (se volverán a cargar al sincronizar).', () => {
+      [LS.docs, LS.firmas, LS.session].forEach(k => localStorage.removeItem(k)); Store.clear().then(() => BC && BC.postMessage('upd')); FS.rc = {}; state.user = null; render(); toast('Datos locales reiniciados.', 'ok');
+    }, 'Reiniciar'); break;
+  }
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const all = document.querySelectorAll('.backdrop'); if (all.length) closeModal(all[all.length - 1].dataset.key); }
+});
+/* Sincronización automática con la carpeta compartida */
+window.addEventListener('focus', () => FS.sync(true));
+setInterval(() => FS.sync(true), 15000);
+if (BC) BC.onmessage = async () => { await Store.reload(); if (me()) { render(); refreshDocModal(); checkArrivals(); } };
+
+Store.init().then(() => SIGS.init()).then(() => { render(); return LIBRO.init(); }).then(() => FS.init()).then(() => { if (EN_PORTAL) return portalLogin(); render(); if (me()) startQueue(); });
+</script>
+</body>
+</html>

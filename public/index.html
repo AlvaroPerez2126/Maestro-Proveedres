@@ -319,6 +319,9 @@ label.op{display:flex;gap:8px;align-items:center;padding:4px 6px;border-radius:5
   .kpi .v{font-size:17px}
   .kpis{grid-template-columns:1fr 1fr}
 }
+/* ---------- Circuito V°B° (iframe) ---------- */
+.vb-barra{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px;color:var(--txt2);font-size:12.5px}
+.vb-frame{width:100%;height:calc(100vh - 150px);min-height:560px;border:1px solid var(--borde);border-radius:var(--r);background:#fff;display:block}
 /* ---------- Proceso Contratistas ---------- */
 .pcb{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
 .pcb.g{background:var(--verde-claro);color:var(--verde-osc)} .pcb.r{background:var(--rojo-claro);color:var(--rojo)} .pcb.y{background:var(--ambar-claro);color:var(--ambar)}
@@ -454,6 +457,7 @@ const IC = {
   caja:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M12 11v3"/></svg>',
   firma:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17c3-6 5-9 7-9 2 0-1 8 1 8s3-4 5-4 1 3 3 3"/><path d="M3 21h18"/></svg>',
   edificio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h3a1 1 0 0 1 1 1v11M2 21h20M8 7h4M8 11h4M8 15h4"/></svg>',
+  firmadoc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M7 17c1.5-2 2.5-3 3.2-3 .9 0-.2 2.6.8 2.6.7 0 1.2-1.3 2-1.3s.6 1.1 1.5 1.1"/></svg>',
   carpeta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 13l2 2 4-4"/></svg>',
   camion:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 6h13v10H1zM14 10h4l3 3v3h-7"/><circle cx="5.5" cy="18" r="2"/><circle cx="17.5" cy="18" r="2"/></svg>',
   obrero:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="3.5"/><path d="M7.5 7a4.5 4.5 0 0 1 9 0M6 7h12M5 21a7 7 0 0 1 14 0M10 16l2 2 3-3.5"/></svg>',
@@ -1670,6 +1674,9 @@ const PAGINAS = [
         niveles: [{ t: 'Contratista', v: r => r.contratista }, { t: 'Nombre', v: r => r.trabajador }], col });
       if (!S.datos.asiscontr.length && !(S.asisFuente && S.asisFuente.url)) el.querySelector('#as1').innerHTML = '';
     } },
+  // ---------------- FIRMA DE FACTURAS (circuito V°B°, con las carpetas de cada empresa) ----------------
+  { id: 'vbfirmas', grupo: 'Firma de facturas', titulo: 'Circuito V°B°', ic: 'firmadoc', desc: 'Firma y visto bueno de facturas: Alvaro (AP), Santiago (SC) y Gerencia (Thomas / Hans), con las carpetas de cada empresa en OneDrive.',
+    render: c => pintarVB(c) },
   // ---------------- PROCESO CONTRATISTAS (precalificación) ----------------
   { id: 'pcontratistas', grupo: 'Contratistas', titulo: 'Proceso Contratistas', ic: 'carpeta', desc: 'Precalificación de contratistas: documentos de subcontratación y prevención de riesgos, revisión, reporte y correo de resultado.',
     render: c => !S.estado ? null : S.sub ? pintarPC(c, parseInt(S.sub, 10)) : pintarPCLista(c) },
@@ -2313,6 +2320,17 @@ async function pcReporte(c0) {
   w.document.open(); w.document.write(html); w.document.close();
 }
 
+// Circuito V°B°: la aplicación de firmas (public/vb.html) se muestra dentro del portal, con la empresa elegida.
+// Trabaja con la carpeta de la empresa (SISTEMA FIRMAS FACTURAS/<EMPRESA>) que cada usuario conecta en su computador.
+function pintarVB(c) {
+  if (!S.estado) return;
+  const e = empAct(), url = `/vb.html?emp=${S.empresa}&nom=${encodeURIComponent(e.nombre || '')}`;
+  const soporta = typeof window.showDirectoryPicker === 'function';
+  c.innerHTML = `<div class="vb-barra"><span>Empresa: <b>${esc(e.nombre || '')}</b> · conecta su carpeta en <b>SISTEMA FIRMAS FACTURAS</b> (pestaña <i>Carpetas</i>).</span>
+      <a class="btn" href="${url}" target="_blank" rel="noopener">⤢ Pantalla completa</a></div>
+    ${soporta ? '' : '<div class="aviso">Este navegador no permite conectar carpetas. Usa <b>Google Chrome</b> o <b>Microsoft Edge</b> en el computador.</div>'}
+    <iframe class="vb-frame" src="${url}" title="Circuito V°B°"></iframe>`;
+}
 async function pintarRendiciones(c) {
   c.innerHTML = `<div class="cargando"><div class="spin"></div></div>`;
   let lista;

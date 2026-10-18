@@ -220,6 +220,7 @@ svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-widt
 .sig-date{font-size:9.5px;color:#5b6675;min-height:13px}
 .sig-slot.signed .sig-area::after{content:" ✓";color:var(--ok)}
 .sig-slot.na{opacity:.5}
+.sig-zone.solo{grid-template-columns:1fr;width:33.34%}   /* sin V°B°: solo la firma de Finanzas */
 
 /* Firma */
 .checker{background-color:#fff;background-image:linear-gradient(45deg,#f0f2f5 25%,transparent 25%),linear-gradient(-45deg,#f0f2f5 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#f0f2f5 75%),linear-gradient(-45deg,transparent 75%,#f0f2f5 75%);background-size:18px 18px;background-position:0 0,0 9px,9px -9px,-9px 0}
@@ -1063,7 +1064,7 @@ function sigSlots(d) {
     { key: 'SC', area: 'SUBGERENCIA', who: firmaNombre('SC') },
     { key: 'GER', area: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }
   ];
-  return slots.map(s => {
+  return slots.filter(s => !sinVB(d) || s.key === 'AP' || d.firmas[s.key]).map(s => {   // sin V°B°: solo Finanzas
     const f = d.firmas[s.key], na = !f && sinVB(d) && s.key !== 'AP';
     return `<div class="sig-slot ${f ? 'signed' : ''} ${na ? 'na' : ''}">
       <div class="sig-area">${s.area}</div>
@@ -1094,14 +1095,15 @@ async function drawSigStrip(pdf, d) {
   const page = pdf.getPage(Math.min(PDF_SIG.page, pdf.getPageCount() - 1));
   const { width } = page.getSize();
   const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const x0 = PDF_SIG.margin, y0 = PDF_SIG.bottom, W = width - 2 * x0, H = PDF_SIG.height, cw = W / 3;
+  const slots = [{ k: 'AP', t: 'FINANZAS', who: firmaNombre('AP') }, { k: 'SC', t: 'SUBGERENCIA', who: firmaNombre('SC') }, { k: 'GER', t: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }]
+    .filter(s => !sinVB(d) || s.k === 'AP' || d.firmas[s.k]);   // sin V°B°: solo la firma de Finanzas (no se muestran casillas vacías)
+  const x0 = PDF_SIG.margin, y0 = PDF_SIG.bottom, cw = (width - 2 * x0) / 3, W = cw * slots.length, H = PDF_SIG.height;
   const ink = rgb(0.1, 0.14, 0.19), gray = rgb(0.45, 0.49, 0.55), green = rgb(0.08, 0.5, 0.24);
   const center = (txt, f, size, cx, y, color) => { txt = winAnsi(txt); page.drawText(txt, { x: cx - f.widthOfTextAtSize(txt, size) / 2, y, size, font: f, color }); };
 
-  page.drawText(winAnsi(`CIRCUITO V°B° · COMP. ${d.id} · ${d.proveedor} · Factura ${d.factura}${d.oc ? ' · OC ' + d.oc : ''}${sinVB(d) ? ' · NO REQUIERE V°B°' : ''}`), { x: x0, y: y0 + H + 5, size: 7, font: bold, color: gray });
+  page.drawText(winAnsi(`CIRCUITO V°B° · COMP. ${d.id} · ${d.proveedor} · Factura ${d.factura}${d.oc ? ' · OC ' + d.oc : ''}${sinVB(d) ? ' · SIN V°B° (solo firma Finanzas)' : ''}`), { x: x0, y: y0 + H + 5, size: 7, font: bold, color: gray });
   page.drawRectangle({ x: x0, y: y0, width: W, height: H, borderColor: ink, borderWidth: 1 });
-  const slots = [{ k: 'AP', t: 'FINANZAS', who: firmaNombre('AP') }, { k: 'SC', t: 'SUBGERENCIA', who: firmaNombre('SC') }, { k: 'GER', t: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }];
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < slots.length; i++) {
     const s = slots[i], cx = x0 + i * cw, mid = cx + cw / 2, f = d.firmas[s.k], na = !f && sinVB(d) && s.k !== 'AP';
     if (i > 0) page.drawLine({ start: { x: cx, y: y0 + 6 }, end: { x: cx, y: y0 + H - 6 }, thickness: 0.5, color: gray });
     center(s.t, bold, 8, mid, y0 + H - 14, f ? green : ink);
@@ -1161,7 +1163,7 @@ function a4View(d) {
       <div class="stamp"><span>Monto: <b style="color:#1b2430">${clp(d.monto)}</b></span><span>Circuito V°B° · ${ESTADOS[d.estado].label}</span></div>
     </div>
     ${body}
-    <div class="sig-zone">${sigSlots(d)}</div>
+    <div class="sig-zone ${sinVB(d) ? 'solo' : ''}">${sigSlots(d)}</div>
   </div>`;
 }
 /* Muestra el PDF con las firmas ya estampadas (generado al vuelo) */

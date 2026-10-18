@@ -821,9 +821,28 @@ async function portalLogin() {
     if (!j.admin && !(j.paginas || []).includes('vbfirmas')) { PORTAL.msg = 'Tu usuario no tiene permiso para Firma de facturas. Pídelo al administrador del portal.'; render(); return; }
     const u = rolDe(j);
     if (!u) { PORTAL.msg = `Tu usuario (${j.nombre || j.usuario}) no participa en el circuito V°B°. Firman: Alvaro (AP), Santiago (SC), Thomas (TG) y Hans (HL).`; render(); return; }
+    PORTAL.cred = cred;
+    await firmaDelPortal(u);
     state.user = u; state.view = 'inicio'; render();
     Promise.resolve(FS.sync(true)).finally(startQueue);
   } catch (e) { PORTAL.msg = e.message; render(); }
+}
+const portalHdr = () => ({ 'x-usuario': encodeURIComponent(PORTAL.cred.u), 'x-clave': encodeURIComponent(PORTAL.cred.c) });
+/* La firma es la misma del portal ("Mi firma" / caja chica): se toma de allí, sin cargarla de nuevo */
+async function firmaDelPortal(u) {
+  try {
+    const r = await fetch('/api/firma?img=1', { headers: portalHdr() });
+    if (!r.ok) return;
+    const b = await r.blob();
+    const img = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = () => ok(null); fr.readAsDataURL(b); });
+    const act = Store.firma(u);
+    if (img && (!act || act.img !== img)) Store.setFirma(u, img);
+  } catch (e) { }
+}
+/* Si se carga o cambia la firma aquí, queda también en el portal (la misma para caja chica) */
+async function firmaAlPortal(img) {
+  if (!EN_PORTAL || !PORTAL.cred || !/^data:image\/png/.test(img)) return;
+  try { const b = await (await fetch(img)).blob(); await fetch('/api/firma', { method: 'POST', body: b, headers: { ...portalHdr(), 'Content-Type': 'application/octet-stream' } }); } catch (e) { }
 }
 function portalView() {
   return `<div class="login-wrap"><div class="login-card">
@@ -1640,7 +1659,7 @@ function openFirmaModal() {
     let img = pending;
     if (mode === 'draw') { const t = trimCanvas(pad); if (!t) return; img = t.toDataURL('image/png'); }
     if (!img) return;
-    if (Store.setFirma(u, img)) { closeModal('firma'); toast('Firma guardada. Se usará automáticamente.', 'ok'); render(); refreshDocModal(); }
+    if (Store.setFirma(u, img)) { firmaAlPortal(img); closeModal('firma'); toast('Firma guardada. Se usará automáticamente.', 'ok'); render(); refreshDocModal(); }
   });
 }
 

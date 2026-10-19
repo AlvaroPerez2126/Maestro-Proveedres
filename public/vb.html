@@ -1112,12 +1112,22 @@ const winAnsi = s => String(s ?? '').replace(/[^\x20-\x7E -ÿ]/g, '?');
 async function drawSigStrip(pdf, d) {
   const { StandardFonts, rgb } = PDFLib;
   const page = pdf.getPage(Math.min(PDF_SIG.page, pdf.getPageCount() - 1));
-  const { width } = page.getSize();
+  // La hoja se ALARGA hacia abajo: el documento original queda intacto y la franja de firmas va en el espacio nuevo,
+  // como una extensión de la misma página (no tapa nada del documento).
+  const mb = page.getMediaBox(), EXT = PDF_SIG.height + 34;
+  const giro = ((page.getRotation().angle % 360) + 360) % 360;
+  let base = mb.y + PDF_SIG.bottom, width = mb.width, xIni = mb.x;
+  if (giro === 0) {
+    page.setMediaBox(mb.x, mb.y - EXT, mb.width, mb.height + EXT);
+    page.setCropBox(mb.x, mb.y - EXT, mb.width, mb.height + EXT);
+    base = mb.y - EXT + 10;
+  }
   const font = await pdf.embedFont(StandardFonts.Helvetica), bold = await pdf.embedFont(StandardFonts.HelveticaBold);
   const slots = [{ k: 'AP', t: 'FINANZAS', who: firmaNombre('AP') }, { k: 'SC', t: 'SUBGERENCIA', who: firmaNombre('SC') }, { k: 'GER', t: 'GERENCIA', who: d.firmas.GER ? firmaNombre(d.firmas.GER.user) : (d.gerente ? firmaNombre(d.gerente) : 'TG / HL') }]
     .filter(s => !sinVB(d) || s.k === 'AP' || d.firmas[s.k]);   // sin V°B°: solo la firma de Finanzas (no se muestran casillas vacías)
-  const x0 = PDF_SIG.margin, y0 = PDF_SIG.bottom, cw = (width - 2 * x0) / 3, W = cw * slots.length, H = PDF_SIG.height;
+  const x0 = xIni + PDF_SIG.margin, y0 = base, cw = (width - 2 * PDF_SIG.margin) / 3, W = cw * slots.length, H = PDF_SIG.height;
   const ink = rgb(0.1, 0.14, 0.19), gray = rgb(0.45, 0.49, 0.55), green = rgb(0.08, 0.5, 0.24);
+  if (giro === 0) page.drawLine({ start: { x: xIni + 14, y: mb.y }, end: { x: xIni + width - 14, y: mb.y }, thickness: 0.4, color: gray, dashArray: [3, 3] });   // borde original de la hoja
   const center = (txt, f, size, cx, y, color) => { txt = winAnsi(txt); page.drawText(txt, { x: cx - f.widthOfTextAtSize(txt, size) / 2, y, size, font: f, color }); };
 
   page.drawText(winAnsi(`CIRCUITO V°B° · COMP. ${d.id} · ${d.proveedor} · Factura ${d.factura}${d.oc ? ' · OC ' + d.oc : ''}${sinVB(d) ? ' · SIN V°B° (solo firma Finanzas)' : ''}`), { x: x0, y: y0 + H + 5, size: 7, font: bold, color: gray });
@@ -1150,7 +1160,7 @@ async function buildStamped(d) {
     pdf = await PDFDocument.create();
     const page = pdf.addPage([595.28, 841.89]);
     const img = /png/.test(o.mime) ? await pdf.embedPng(o.bytes) : await pdf.embedJpg(o.bytes);
-    const area = { x: 36, y: PDF_SIG.bottom + PDF_SIG.height + 24, w: 523 }; area.h = 841.89 - 36 - area.y;
+    const area = { x: 36, y: 36, w: 523 }; area.h = 841.89 - 36 - area.y;   // la franja de firmas va en la extensión inferior
     const s = Math.min(area.w / img.width, area.h / img.height);
     page.drawImage(img, { x: area.x + (area.w - img.width * s) / 2, y: area.y + area.h - img.height * s, width: img.width * s, height: img.height * s });
   }
